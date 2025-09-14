@@ -27,10 +27,7 @@ class AdvancedFeatures {
         add_action( 'wp_ajax_b2b_product_inquiry', [ $this, 'handle_product_inquiry' ] );
         add_action( 'wp_ajax_nopriv_b2b_product_inquiry', [ $this, 'handle_product_inquiry' ] );
         // JavaScript is handled by b2b-commerce-pro.js file
-        // Bulk pricing calculator
-        add_action( 'woocommerce_single_product_summary', [ $this, 'bulk_pricing_calculator' ], 30 );
-        add_action( 'wp_ajax_b2b_calculate_bulk_price', [ $this, 'calculate_bulk_price' ] );
-        add_action( 'wp_ajax_nopriv_b2b_calculate_bulk_price', [ $this, 'calculate_bulk_price' ] );
+        // Bulk pricing calculator - REMOVED (Pro feature)
         // Catalog mode & checkout controls
         add_filter( 'woocommerce_is_purchasable', [ $this, 'maybe_disable_purchasable' ], 5, 2 );
         add_filter( 'woocommerce_get_price_html', [ $this, 'maybe_hide_price_html' ], 5, 2 );
@@ -726,121 +723,7 @@ class AdvancedFeatures {
 
 
     
-    // Bulk pricing calculator
-    public function bulk_pricing_calculator() {
-        if (!is_user_logged_in()) return;
-        
-        // Prevent duplicate calculators
-        static $bulk_calculator_rendered = false;
-        if ($bulk_calculator_rendered) return;
-        $bulk_calculator_rendered = true;
-        
-        $user = wp_get_current_user();
-        $user_roles = $user->roles;
-        $b2b_roles = ['b2b_customer', 'wholesale_customer', 'distributor', 'retailer'];
-        
-        if (!array_intersect($user_roles, $b2b_roles)) return;
-        
-        global $product;
-        if (!$product) return;
-        
-        // Check if bulk calculator should be shown for this product
-        if (class_exists('B2B\\ProductManager')) {
-            $product_manager = new ProductManager();
-            if (!$product_manager->should_show_bulk_calculator($product->get_id())) {
-                return;
-            }
-        }
-        
-        echo '<div class="b2b-bulk-calculator" data-product-id="' . esc_attr( $product->get_id() ) . '">';
-        echo '<h4>' . __('Bulk Pricing Calculator', 'b2b-commerce') . '</h4>';
-        echo '<p><label>' . __('Quantity:', 'b2b-commerce') . ' <input type="number" name="bulk_qty" min="1" value="1" class="bulk-qty-input"></label></p>';
-        echo '<p><strong>' . __('Price:', 'b2b-commerce') . ' <span class="bulk-price-display">' . $product->get_price_html() . '</span></strong></p>';
-        echo '<button type="button" class="button calculate-bulk-price">' . __('Calculate Bulk Price', 'b2b-commerce') . '</button>';
-        echo '</div>';
-    }
-    
-    // Calculate bulk price
-    public function calculate_bulk_price() {
-        // Security check
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'b2b_ajax_nonce')) {
-            wp_send_json_error(__('Security check failed', 'b2b-commerce'));
-            return;
-        }
-
-        if (!is_user_logged_in()) {
-            wp_send_json_error(__('Please log in to calculate bulk prices', 'b2b-commerce'));
-            return;
-        }
-        
-        $product_id = intval($_POST['product_id']);
-        $quantity = intval($_POST['quantity']);
-        $user_id = get_current_user_id();
-        
-        if (!$product_id || !$quantity) {
-            wp_send_json_error(__('Invalid request data', 'b2b-commerce'));
-            return;
-        }
-        
-        $product = wc_get_product($product_id);
-        if (!$product) {
-            wp_send_json_error(__('Product not found', 'b2b-commerce'));
-            return;
-        }
-        
-        // Get user role for pricing
-        $user = get_userdata($user_id);
-        $user_role = $user->roles[0] ?? '';
-        
-
-        
-        // Get pricing rules - check both product-specific and global rules (product_id = 0)
-        global $wpdb;
-        $table = $wpdb->prefix . 'b2b_pricing_rules';
-        $rules = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $table WHERE (product_id = %d OR product_id = 0) AND role = %s AND min_qty <= %d ORDER BY product_id DESC, min_qty DESC, price ASC LIMIT 1",
-            $product_id,
-            $user_role,
-            $quantity
-        ));
-        
-        $original_price = (float) $product->get_price();
-        $unit_price = $original_price;
-        $discount_display = __('No discount', 'b2b-commerce');
-        
-
-        
-        if (!empty($rules)) {
-            $rule = $rules[0];
-    
-            if ($rule->type === 'percentage') {
-                // Use absolute percentage; admin UI stores discounts as negative, normalize here
-                $percent = abs((float) $rule->price);
-                $unit_price = $original_price * (1 - ($percent / 100));
-                $discount_display = sprintf('%.0f%%', $percent);
-            } else {
-                // Fixed type represents final price in our system
-                $unit_price = (float) $rule->price;
-                $discount_amount = $original_price - $unit_price;
-                if ($discount_amount > 0) {
-                    $discount_display = wc_price($discount_amount) . ' ' . __('off', 'b2b-commerce');
-                } elseif ($discount_amount < 0) {
-                    $discount_display = wc_price(abs($discount_amount)) . ' ' . __('more', 'b2b-commerce');
-                } else {
-                    $discount_display = __('Same price', 'b2b-commerce');
-                }
-            }
-            $unit_price = max(0, $unit_price);
-        }
-        
-        $total_price = $unit_price * $quantity;
-        
-        wp_send_json_success([
-            'unit_price' => wc_price($unit_price),
-            'total_price' => wc_price($total_price),
-            'discount' => $discount_display
-        ]);
-    }
+    // Bulk pricing calculator - REMOVED (Pro feature)
     
 
     

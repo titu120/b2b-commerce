@@ -15,7 +15,7 @@
             this.initDataTables();
             this.initAjaxForms();
             this.initQuoteRequests();
-            this.initBulkPricing();
+            // this.initBulkPricing(); // REMOVED (Pro feature)
         },
 
         bindEvents: function() {
@@ -418,43 +418,7 @@
             });
         },
 
-        // Bulk pricing calculator functionality
-        initBulkPricing: function() {
-            // Prevent multiple event bindings
-            if (this.bulkPricingInitialized) return;
-            this.bulkPricingInitialized = true;
-            
-            $(document).on('click', '.calculate-bulk-price', function() {
-                var calculator = $(this).closest('.b2b-bulk-calculator');
-                var quantity = calculator.find('.bulk-qty-input').val();
-                // Prefer product id on calculator container, fallback to theme button data attribute
-                var productId = calculator.data('product-id') || calculator.closest('.product').find('.add_to_cart').data('product_id');
-
-                if (!quantity || quantity < 1) {
-                    alert('Please enter a valid quantity');
-                    return;
-                }
-
-                var data = {
-                    action: 'b2b_calculate_bulk_price',
-                    product_id: productId,
-                    quantity: quantity,
-                    nonce: b2b_ajax.nonce
-                };
-
-                $.post(b2b_ajax.ajaxurl, data, function(response) {
-                    if (response.success) {
-                        calculator.find('.bulk-price-display').html(
-                            'Unit Price: ' + response.data.unit_price + '<br>' +
-                            'Total Price: ' + response.data.total_price + '<br>' +
-                            'Discount: ' + response.data.discount
-                        );
-                    } else {
-                        alert(b2b_ajax.strings.error + ': ' + response.data);
-                    }
-                });
-            });
-        }
+        // Bulk pricing calculator functionality - REMOVED (Pro feature)
     };
 
     // Initialize when document is ready

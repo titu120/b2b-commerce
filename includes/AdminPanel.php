@@ -1892,7 +1892,7 @@ Best regards,
                 </div>
                 
                 <div style="margin-top: 30px;">
-                    <a href="#" class="button button-primary button-hero" style="font-size: 16px; padding: 15px 30px;">
+                    <a href="#" class="button button-primary button-hero" style="font-size: 16px;">
                         ' . __('Upgrade to Pro', 'b2b-commerce') . '
                     </a>
                 </div>
@@ -1947,7 +1947,7 @@ Best regards,
                 </div>
                 
                 <div style="margin-top: 30px;">
-                    <a href="#" class="button button-primary button-hero" style="font-size: 16px; padding: 15px 30px;">
+                    <a href="#" class="button button-primary button-hero" style="font-size: 16px;">
                         ' . __('Upgrade to Pro', 'b2b-commerce') . '
                     </a>
                 </div>
@@ -2981,7 +2981,7 @@ Best regards,
             // Detailed tests
             $tests['detailed'] = [
                 __('Plugin Files', 'b2b-commerce')         => [
-                    'status'  => file_exists(B2B_COMMERCE_PRO_PATH . 'b2b-commerce-pro.php') ? 'OK' : 'FAILED',
+                    'status'  => file_exists(B2B_COMMERCE_PATH . 'b2b-commerce.php') ? 'OK' : 'FAILED',
                     'message' => __('Main plugin file check', 'b2b-commerce'),
                 ],
                 __('Admin Panel', 'b2b-commerce')          => [
@@ -2989,11 +2989,11 @@ Best regards,
                     'message' => __('Admin panel class loaded', 'b2b-commerce'),
                 ],
                 __('CSS Files', 'b2b-commerce')            => [
-                    'status'  => file_exists(B2B_COMMERCE_PRO_PATH . 'assets/css/b2b-admin-standalone-demo.css') ? 'OK' : 'FAILED',
+                    'status'  => file_exists(B2B_COMMERCE_PATH . 'assets/css/b2b-admin-standalone-demo.css') ? 'OK' : 'FAILED',
                     'message' => __('Admin CSS files present', 'b2b-commerce'),
                 ],
                 __('JS Files', 'b2b-commerce')             => [
-                    'status'  => file_exists(B2B_COMMERCE_PRO_PATH . 'assets/js/b2b-commerce-pro.js') ? 'OK' : 'FAILED',
+                    'status'  => file_exists(B2B_COMMERCE_PATH . 'assets/js/b2b-commerce-pro.js') ? 'OK' : 'FAILED',
                     'message' => __('Admin JavaScript files present', 'b2b-commerce'),
                 ],
                 __('Database Permissions', 'b2b-commerce') => [
@@ -3188,51 +3188,51 @@ Best regards,
             ob_start();
         ?>
         <div class="b2b-import-export-container">
-            <h2>' . __('Bulk Import/Export', 'b2b-commerce') . '</h2>
-            <p style="color: #666; margin-bottom: 20px;">' . __('Export your B2B data to CSV format for backup or external processing.', 'b2b-commerce') . '</p>
+            <h2><?php echo __('Bulk Import/Export', 'b2b-commerce'); ?></h2>
+            <p style="color: #666; margin-bottom: 20px;"><?php echo __('Export your B2B data to CSV format for backup or external processing.', 'b2b-commerce'); ?></p>
 
             <div class="b2b-import-export-section">
-                <h3>' . __('Export Data', 'b2b-commerce') . '</h3>
-                <p style="color: #666; margin-bottom: 15px;">' . __('Click any button below to export the corresponding data:', 'b2b-commerce') . '</p>
+                <h3><?php echo __('Export Data', 'b2b-commerce'); ?></h3>
+                <p style="color: #666; margin-bottom: 15px;"><?php echo __('Click any button below to export the corresponding data:', 'b2b-commerce'); ?></p>
                 <div class="b2b-export-options">
-                    <button class="button button-primary" onclick="exportB2BData(\'users\')">' . __('Export Users', 'b2b-commerce') . '</button>
-                    <span style="margin-left: 10px; color: #666; font-size: 0.9em;">' . __('Exports all B2B users with their details', 'b2b-commerce') . '</span><br><br>
-                    <button class="button button-primary" onclick="exportB2BData(\'pricing\')">' . __('Export Pricing Rules', 'b2b-commerce') . '</button>
-                    <span style="margin-left: 10px; color: #666; font-size: 0.9em;">' . __('Exports all B2B pricing rules', 'b2b-commerce') . '</span><br><br>
-                    <button class="button button-primary" onclick="exportB2BData(\'orders\')">' . __('Export Orders', 'b2b-commerce') . '</button>
-                    <span style="margin-left: 10px; color: #666; font-size: 0.9em;">' . __('Exports all WooCommerce orders (if any exist)', 'b2b-commerce') . '</span>
+                    <button class="button button-primary" onclick="exportB2BData('users')"><?php echo __('Export Users', 'b2b-commerce'); ?></button>
+                    <span style="margin-left: 10px; color: #666; font-size: 0.9em;"><?php echo __('Exports all B2B users with their details', 'b2b-commerce'); ?></span><br><br>
+                    <button class="button button-primary" onclick="exportB2BData('pricing')"><?php echo __('Export Pricing Rules', 'b2b-commerce'); ?></button>
+                    <span style="margin-left: 10px; color: #666; font-size: 0.9em;"><?php echo __('Exports all B2B pricing rules', 'b2b-commerce'); ?></span><br><br>
+                    <button class="button button-primary" onclick="exportB2BData('orders')"><?php echo __('Export Orders', 'b2b-commerce'); ?></button>
+                    <span style="margin-left: 10px; color: #666; font-size: 0.9em;"><?php echo __('Exports all WooCommerce orders (if any exist)', 'b2b-commerce'); ?></span>
                 </div>
                 <p style="margin-top: 15px; padding: 10px; background: #f0f8ff; border-left: 4px solid #2196f3; color: #666;">
-                    <strong>' . __('Note:', 'b2b-commerce') . '</strong> ' . __('If no data exists for a particular export type, the CSV will contain a message indicating "No data found".', 'b2b-commerce') . '
+                    <strong><?php echo __('Note:', 'b2b-commerce'); ?></strong> <?php echo __('If no data exists for a particular export type, the CSV will contain a message indicating "No data found".', 'b2b-commerce'); ?>
                 </p>
             </div>
 
             <div class="b2b-import-export-section">
-                <h3>' . __('Import Data', 'b2b-commerce') . '</h3>
+                <h3><?php echo __('Import Data', 'b2b-commerce'); ?></h3>
                 <form method="post" enctype="multipart/form-data">
                     <?php wp_nonce_field('b2b_import_export', 'b2b_import_nonce'); ?>
                     <p>
-                        <label>' . __('Select File Type:', 'b2b-commerce') . '</label>
+                        <label><?php echo __('Select File Type:', 'b2b-commerce'); ?></label>
                         <select name="import_type">
-                            <option value="users">' . __('Users', 'b2b-commerce') . '</option>
-                            <option value="pricing">' . __('Pricing Rules', 'b2b-commerce') . '</option>
+                            <option value="users"><?php echo __('Users', 'b2b-commerce'); ?></option>
+                            <option value="pricing"><?php echo __('Pricing Rules', 'b2b-commerce'); ?></option>
                         </select>
                     </p>
                     <p>
-                        <label>' . __('CSV File:', 'b2b-commerce') . '</label>
+                        <label><?php echo __('CSV File:', 'b2b-commerce'); ?></label>
                         <input type="file" name="import_file" accept=".csv" required>
                     </p>
                     <p>
-                        <input type="submit" name="b2b_import" value="' . __('Import Data', 'b2b-commerce') . '" class="button button-primary">
+                        <input type="submit" name="b2b_import" value="<?php echo __('Import Data', 'b2b-commerce'); ?>" class="button button-primary">
                     </p>
                 </form>
             </div>
 
             <div class="b2b-import-export-section">
-                <h3>' . __('Template Downloads', 'b2b-commerce') . '</h3>
-                <p>' . __('Download CSV templates for importing data:', 'b2b-commerce') . '</p>
-                <a href="<?php echo admin_url('admin-ajax.php?action=b2b_download_template&type=users&nonce=' . wp_create_nonce('b2b_template_nonce')); ?>" class="button">' . __('Users Template', 'b2b-commerce') . '</a>
-                <a href="<?php echo admin_url('admin-ajax.php?action=b2b_download_template&type=pricing&nonce=' . wp_create_nonce('b2b_template_nonce')); ?>" class="button">' . __('Pricing Template', 'b2b-commerce') . '</a>
+                <h3><?php echo __('Template Downloads', 'b2b-commerce'); ?></h3>
+                <p><?php echo __('Download CSV templates for importing data:', 'b2b-commerce'); ?></p>
+                <a href="<?php echo admin_url('admin-ajax.php?action=b2b_download_template&type=users&nonce=' . wp_create_nonce('b2b_template_nonce')); ?>" class="button"><?php echo __('Users Template', 'b2b-commerce'); ?></a>
+                <a href="<?php echo admin_url('admin-ajax.php?action=b2b_download_template&type=pricing&nonce=' . wp_create_nonce('b2b_template_nonce')); ?>" class="button"><?php echo __('Pricing Template', 'b2b-commerce'); ?></a>
             </div>
         </div>
 
@@ -3259,7 +3259,7 @@ Best regards,
         </script>
         <?php
             return ob_get_clean();
-                }
+        }
 
                 // Helper function to process email templates
                 private function process_email_template($template_key, $variables = [])

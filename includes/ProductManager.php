@@ -95,15 +95,7 @@ class ProductManager {
             'value' => $show_quote_buttons
         ]);
 
-        // Bulk Pricing Calculator control
-        $show_bulk_calculator = get_post_meta($post->ID, '_b2b_show_bulk_calculator', true);
-        if ($show_bulk_calculator === '') $show_bulk_calculator = apply_filters('b2b_default_show_bulk_calculator', 'yes'); // Default to yes
-        woocommerce_wp_checkbox([
-            'id' => '_b2b_show_bulk_calculator',
-            'label' => __('Show Bulk Pricing Calculator', 'b2b-commerce'),
-            'description' => __('Show bulk pricing calculator for B2B customers to calculate prices for different quantities.', 'b2b-commerce'),
-            'value' => $show_bulk_calculator
-        ]);
+        // Bulk Pricing Calculator control - REMOVED (Pro feature)
 
         echo '</div></div>';
 
@@ -842,28 +834,5 @@ class ProductManager {
         return true;
     }
     
-    // Helper function to check if bulk calculator should be shown for a product
-    public function should_show_bulk_calculator($product_id) {
-        // Check if user is logged in and has B2B role
-        if (!is_user_logged_in()) return false;
-        
-        $user = wp_get_current_user();
-        $user_roles = $user->roles;
-        $b2b_roles = apply_filters('b2b_customer_roles', ['b2b_customer', 'wholesale_customer', 'distributor', 'retailer']);
-        
-        if (!array_intersect($user_roles, $b2b_roles)) return false;
-        
-        // Check if user is allowed to see this product (B2B restrictions)
-        if (!$this->is_user_allowed_for_product($product_id)) {
-            return false; // Don't show calculator if user can't access this product
-        }
-        
-        // Check if product has specific bulk calculator settings
-        $show_bulk_calculator = get_post_meta($product_id, '_b2b_show_bulk_calculator', true);
-        if ($show_bulk_calculator === apply_filters('b2b_show_calculator_no_value', 'no')) {
-            return false; // Explicitly disabled for this product
-        }
-        
-        return true;
-    }
+    // Helper function to check if bulk calculator should be shown for a product - REMOVED (Pro feature)
 } 
