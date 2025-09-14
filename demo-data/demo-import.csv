@@ -1,0 +1,5 @@
+user_email,user_role,company,approved
+b2b@example.com,b2b_customer,Example B2B,1
+wholesale@example.com,wholesale_customer,Wholesale Inc,1
+distributor@example.com,distributor,Distributor Ltd,0
+retailer@example.com,retailer,Retailer Shop,1 

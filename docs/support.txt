@@ -1,0 +1,15 @@
+B2B Commerce Pro - Support
+=========================
+
+For support, please contact:
+Email: yourname@example.com
+Website: https://yourwebsite.com/support
+
+Support includes:
+- Installation help
+- Bug fixes
+- Feature requests
+
+Support does not include:
+- Custom development
+- Third-party plugin conflicts 

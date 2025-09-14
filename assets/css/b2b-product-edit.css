@@ -1,0 +1,243 @@
+/* B2B Product Edit Page Styling */
+.b2b-pricing-section {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 20px;
+    padding: 15px;
+}
+
+.b2b-pricing-section h4 {
+    margin: 0 0 15px 0 !important;
+    padding: 10px 15px !important;
+    background: #f8f9fa !important;
+    border-left: 4px solid #0073aa !important;
+    border-radius: 3px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.b2b-role-pricing {
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 15px;
+    background: #fafafa;
+}
+
+.b2b-role-pricing h5 {
+    margin: 0 0 15px 0 !important;
+    color: #0073aa !important;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.b2b-role-pricing h6 {
+    margin: 10px 0 8px 0 !important;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+}
+
+.b2b-tiered-pricing {
+    margin-top: 15px;
+    padding: 10px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 3px;
+}
+
+.b2b-tiers-container {
+    margin-bottom: 10px;
+}
+
+.b2b-tier-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 8px;
+    background: #f9f9f9;
+    border-radius: 3px;
+    border: 1px solid #e0e0e0;
+}
+
+.b2b-tier-row input,
+.b2b-tier-row select {
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    padding: 4px 6px;
+    font-size: 12px;
+}
+
+/* Helpful tooltips and placeholders */
+.b2b-tier-row input::placeholder {
+    color: #999;
+    font-style: italic;
+}
+
+.b2b-tier-row input:focus::placeholder {
+    color: #0073aa;
+}
+
+/* Percentage input styling */
+.b2b-tier-row input[placeholder*="percentage"] {
+    background-color: #f0f8ff;
+    border-left: 3px solid #0073aa;
+}
+
+.b2b-tier-row input[placeholder*="price"] {
+    background-color: #fff8f0;
+    border-left: 3px solid #28a745;
+}
+
+/* Add percentage symbol for percentage inputs */
+.b2b-tier-row .tier-type-select option[value="percentage"] {
+    font-weight: bold;
+    color: #0073aa;
+}
+
+.b2b-tier-row .tier-type-select option[value="fixed"] {
+    font-weight: bold;
+    color: #28a745;
+}
+
+/* Percentage input styling with visual indicator */
+.b2b-tier-row .tier-price-input.percentage-input {
+    background-color: #f0f8ff;
+    border-left: 3px solid #0073aa;
+    padding-right: 25px;
+}
+
+/* Add a wrapper for percentage inputs */
+.b2b-tier-row {
+    position: relative;
+}
+
+.b2b-tier-row .percentage-indicator {
+    position: absolute;
+    right: 110px; /* Adjust based on your layout */
+    top: 50%;
+    transform: translateY(-50%);
+    color: #0073aa;
+    font-weight: bold;
+    pointer-events: none;
+    background: #f0f8ff;
+    padding: 2px 4px;
+    border-radius: 2px;
+    font-size: 12px;
+    z-index: 10;
+}
+
+.b2b-tier-row input:focus,
+.b2b-tier-row select:focus {
+    border-color: #0073aa;
+    box-shadow: 0 0 0 1px #0073aa;
+    outline: none;
+}
+
+.b2b-tier-row .remove-tier {
+    background: #dc3545;
+    border-color: #dc3545;
+    color: #fff;
+    font-size: 11px;
+    padding: 4px 8px;
+    height: auto;
+}
+
+.b2b-tier-row .remove-tier:hover {
+    background: #c82333;
+    border-color: #bd2130;
+}
+
+.add-tier {
+    background: #28a745;
+    border-color: #28a745;
+    color: #fff;
+    font-size: 12px;
+    padding: 6px 12px;
+    height: auto;
+}
+
+.add-tier:hover {
+    background: #218838;
+    border-color: #1e7e34;
+}
+
+/* WooCommerce integration */
+.b2b-pricing-section .form-field {
+    margin-bottom: 15px;
+}
+
+.b2b-pricing-section .form-field label {
+    font-weight: 600;
+    color: #23282d;
+}
+
+.b2b-pricing-section .form-field input[type="text"],
+.b2b-pricing-section .form-field input[type="number"] {
+    width: 100%;
+    max-width: 200px;
+}
+
+/* Responsive design */
+@media (max-width: 782px) {
+    .b2b-tier-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 5px;
+    }
+    
+    .b2b-tier-row input,
+    .b2b-tier-row select {
+        width: 100%;
+    }
+    
+    .b2b-tier-row .remove-tier {
+        align-self: flex-end;
+        width: auto;
+    }
+}
+
+/* Validation styling */
+.b2b-pricing-section .form-field.error input {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 1px #dc3545;
+}
+
+.b2b-pricing-section .form-field.error .description {
+    color: #dc3545;
+}
+
+/* Success styling */
+.b2b-pricing-section .form-field.success input {
+    border-color: #28a745;
+    box-shadow: 0 0 0 1px #28a745;
+}
+
+/* Loading state */
+.b2b-pricing-section.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.b2b-pricing-section.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

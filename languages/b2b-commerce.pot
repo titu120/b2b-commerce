@@ -1,0 +1,110 @@
+# B2B Commerce Pro Translation Template
+msgid ""
+msgstr ""
+"Project-Id-Version: B2B Commerce Pro 1.0.0\n"
+"POT-Creation-Date: 2024-12-19\n"
+"Language: en_US\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: B2B Commerce Pro\n"
+
+#: includes/PricingManager.php:466
+msgid "Minimum quantity for wholesale pricing is %d items."
+msgstr ""
+
+#: includes/PricingManager.php:468
+msgid "Note: Minimum quantity for wholesale pricing is %d items. You may not receive wholesale pricing for quantities below this threshold."
+msgstr ""
+
+#: includes/PricingManager.php:474
+msgid "Maximum quantity for this product is %d items."
+msgstr ""
+
+#: includes/PricingManager.php:402
+msgid "off"
+msgstr ""
+
+#: includes/AdvancedFeatures.php:809
+msgid "No discount"
+msgstr ""
+
+#: includes/AdvancedFeatures.php:826
+msgid "off"
+msgstr ""
+
+#: includes/AdvancedFeatures.php:828
+msgid "more"
+msgstr ""
+
+#: includes/AdvancedFeatures.php:830
+msgid "Same price"
+msgstr ""
+
+#: includes/UserManager.php:322
+msgid "Customer Group"
+msgstr ""
+
+#: includes/UserManager.php:325
+msgid "Group"
+msgstr ""
+
+#: includes/UserManager.php:328
+msgid "None"
+msgstr ""
+
+#: includes/UserManager.php:348
+msgid "Import/Export Users"
+msgstr ""
+
+#: includes/AdminPanel.php:1145
+msgid "Value"
+msgstr ""
+
+#: includes/AdminPanel.php:1146
+msgid "Enter value"
+msgstr ""
+
+#: includes/AdminPanel.php:1147
+msgid "For discount: use negative number (e.g., -15 for 15% off)"
+msgstr ""
+
+#: includes/AdminPanel.php:1152
+msgid "Save Pricing Rule"
+msgstr ""
+
+#: includes/AdminPanel.php:1161
+msgid "Edit Pricing Rule"
+msgstr ""
+
+#: includes/AdminPanel.php:1170
+msgid "Customer Type"
+msgstr ""
+
+#: includes/AdminPanel.php:1172
+msgid "Choose customer type"
+msgstr ""
+
+#: includes/AdminPanel.php:1173
+msgid "Wholesale Customer"
+msgstr ""
+
+#: includes/AdminPanel.php:1174
+msgid "Distributor"
+msgstr ""
+
+#: includes/AdminPanel.php:1175
+msgid "Retailer"
+msgstr ""
+
+#: includes/AdminPanel.php:1180
+msgid "Discount Type"
+msgstr ""
+
+#: includes/AdminPanel.php:1182
+msgid "Percentage Discount"
+msgstr ""
+
+#: includes/AdminPanel.php:1183
+msgid "Fixed Price"
+msgstr "" 
