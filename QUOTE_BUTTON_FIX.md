@@ -1,4 +1,4 @@
-# B2B Commerce Pro - Quote/Inquiry Button Fix
+# B2B Commerce - Quote/Inquiry Button Fix
 
 ## Issue Description
 The "Request a Quote" and "Product Inquiry" buttons were showing on ALL products regardless of whether the product was intended for wholesale/B2B customers or regular customers.

@@ -1,5 +1,5 @@
 <?php
-// Email template for B2B Commerce Pro
+// Email template for B2B Commerce
 ?>
 <html>
 <body>

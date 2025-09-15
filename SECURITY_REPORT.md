@@ -1,7 +1,7 @@
-# B2B Commerce Pro - Security Report
+# B2B Commerce - Security Report
 
 ## Overview
-This document outlines the security measures implemented in the B2B Commerce Pro plugin to ensure CodeCanyon compliance and protect against common WordPress security vulnerabilities.
+This document outlines the security measures implemented in the B2B Commerce plugin to ensure CodeCanyon compliance and protect against common WordPress security vulnerabilities.
 
 ## Security Measures Implemented
 
@@ -177,7 +177,7 @@ if (!current_user_can('manage_options')) {
 
 ## Conclusion
 
-The B2B Commerce Pro plugin implements comprehensive security measures that meet CodeCanyon requirements and WordPress security best practices. All critical security vulnerabilities have been addressed, and the plugin follows WordPress coding standards for security.
+The B2B Commerce plugin implements comprehensive security measures that meet CodeCanyon requirements and WordPress security best practices. All critical security vulnerabilities have been addressed, and the plugin follows WordPress coding standards for security.
 
 ### Security Rating: **A+ (Excellent)**
 

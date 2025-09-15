@@ -1,4 +1,4 @@
-# B2B Commerce Pro - Tiered Pricing Guide
+# B2B Commerce - Tiered Pricing Guide
 
 ## 🎯 **How to Set Up Tiered Pricing**
 

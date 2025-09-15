@@ -1,8 +1,8 @@
-B2B Commerce Pro - Installation Guide
+B2B Commerce - Installation Guide
 ====================================
 
 1. Download the plugin zip file from CodeCanyon.
 2. Go to your WordPress admin panel > Plugins > Add New > Upload Plugin.
 3. Select the zip file and click Install Now.
 4. Activate the plugin after installation.
-5. Configure plugin settings from the B2B Commerce Pro menu. 
+5. Configure plugin settings from the B2B Commerce menu. 

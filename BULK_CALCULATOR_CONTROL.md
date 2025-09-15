@@ -1,9 +1,9 @@
-# B2B Commerce Pro - Bulk Calculator Control
+# B2B Commerce - Bulk Calculator Control
 
 ## 🎯 **New Feature: Bulk Calculator Visibility Control**
 
 ### **Overview**
-The B2B Commerce Pro plugin now includes a new product-level setting that allows administrators to control whether the bulk pricing calculator is displayed for each individual product.
+The B2B Commerce plugin now includes a new product-level setting that allows administrators to control whether the bulk pricing calculator is displayed for each individual product.
 
 ### **How It Works**
 

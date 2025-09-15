@@ -55,12 +55,12 @@ class ProductManager {
         echo '<div id="b2b_visibility_box"><div id="b2b_visibility_fields">';
 
         // User roles (multi-select)
-        $all_roles = function_exists('wp_roles') ? array_keys( wp_roles()->roles ) : [];
+        $all_roles = function_exists('wp_roles') ? wp_roles()->roles : [];
         echo '<p class="form-field"><label for="_b2b_visible_roles">' . __('Visible to Roles', 'b2b-commerce') . '</label>';
         echo '<select id="_b2b_visible_roles" name="_b2b_visible_roles[]" multiple="multiple">'; 
-        foreach ( $all_roles as $role_key ) {
+        foreach ( $all_roles as $role_key => $role_data ) {
             $selected = in_array( $role_key, $saved_roles, true ) ? 'selected' : '';
-            echo '<option value="' . esc_attr( $role_key ) . '" ' . $selected . '>' . esc_html( $role_key ) . '</option>';
+            echo '<option value="' . esc_attr( $role_key ) . '" ' . $selected . '>' . esc_html( $role_data['name'] ) . '</option>';
         }
         echo '</select><span class="description">' . __('Choose roles allowed to see this product.', 'b2b-commerce') . '</span></p>';
 
@@ -178,20 +178,59 @@ class ProductManager {
         }
     }
 
-    private function is_user_allowed_for_product( $product_id ) {
-        // Admins/store managers can always view for preview/management
-        if ( current_user_can( 'manage_options' ) || current_user_can( 'manage_woocommerce' ) || current_user_can( 'edit_products' ) ) {
-            return true;
+    public function is_user_allowed_for_product( $product_id ) {
+        // Check if restrictions are actually enabled for this product
+        $restrict_visibility = get_post_meta( $product_id, '_b2b_restrict_visibility', true );
+        if ( ! $restrict_visibility ) {
+            return true; // No restrictions enabled, allow access
         }
+        
         $roles = (array) ( wp_get_current_user()->roles ?? [] );
         $groups = wp_get_object_terms( get_current_user_id(), apply_filters('b2b_user_group_taxonomy', 'b2b_user_group'), [ 'fields' => 'ids' ] );
         $allowed_roles = array_filter( array_map( 'trim', explode( ',', (string) get_post_meta( $product_id, '_b2b_visible_roles', true ) ) ) );
         $allowed_groups = array_filter( array_map( 'intval', explode( ',', (string) get_post_meta( $product_id, '_b2b_visible_groups', true ) ) ) );
         $wholesale_only = get_post_meta( $product_id, '_b2b_wholesale_only', true ) === apply_filters('b2b_wholesale_only_yes_value', 'yes');
 
-        if ( $wholesale_only && ! in_array( apply_filters('b2b_wholesale_customer_role', 'wholesale_customer'), $roles, true ) ) return false;
-        if ( $allowed_roles && ! array_intersect( $roles, $allowed_roles ) ) return false;
-        if ( $allowed_groups && ! array_intersect( $groups, $allowed_groups ) ) return false;
+        // Check wholesale-only restriction
+        if ( $wholesale_only && ! in_array( apply_filters('b2b_wholesale_customer_role', 'wholesale_customer'), $roles, true ) ) {
+            // Allow admins to see wholesale-only products for management
+            if ( ! ( current_user_can( 'manage_options' ) || current_user_can( 'manage_woocommerce' ) || current_user_can( 'edit_products' ) ) ) {
+                return false;
+            }
+        }
+        
+        // Check role restrictions
+        if ( ! empty( $allowed_roles ) && ! array_intersect( $roles, $allowed_roles ) ) {
+            // Debug: Log role checking for troubleshooting
+            if ( defined('WP_DEBUG') && WP_DEBUG ) {
+                error_log( 'B2B Role Check Debug - Product ID: ' . $product_id );
+                error_log( 'B2B Role Check Debug - User roles: ' . print_r( $roles, true ) );
+                error_log( 'B2B Role Check Debug - Allowed roles: ' . print_r( $allowed_roles, true ) );
+                error_log( 'B2B Role Check Debug - Array intersect result: ' . print_r( array_intersect( $roles, $allowed_roles ), true ) );
+            }
+            
+            // Special case: Check if user is administrator but role was saved as "administration"
+            $is_admin = in_array( 'administrator', $roles, true );
+            $has_admin_role = in_array( 'administrator', $allowed_roles, true ) || in_array( 'administration', $allowed_roles, true );
+            
+            if ( $is_admin && $has_admin_role ) {
+                return true; // Allow administrators when admin role is selected
+            }
+            
+            // Allow admins to see role-restricted products for management
+            if ( ! ( current_user_can( 'manage_options' ) || current_user_can( 'manage_woocommerce' ) || current_user_can( 'edit_products' ) ) ) {
+                return false;
+            }
+        }
+        
+        // Check group restrictions
+        if ( ! empty( $allowed_groups ) && ! array_intersect( $groups, $allowed_groups ) ) {
+            // Allow admins to see group-restricted products for management
+            if ( ! ( current_user_can( 'manage_options' ) || current_user_can( 'manage_woocommerce' ) || current_user_can( 'edit_products' ) ) ) {
+                return false;
+            }
+        }
+        
         return true;
     }
 
@@ -811,18 +850,24 @@ class ProductManager {
 
     // Helper function to check if quote/inquiry buttons should be shown for a product
     public function should_show_b2b_buttons($product_id) {
-        // Check if user is logged in and has B2B role
+        // Check if user is logged in
         if (!is_user_logged_in()) return false;
         
         $user = wp_get_current_user();
         $user_roles = $user->roles;
         $b2b_roles = apply_filters('b2b_customer_roles', ['b2b_customer', 'wholesale_customer', 'distributor', 'retailer']);
         
-        if (!array_intersect($user_roles, $b2b_roles)) return false;
-        
-        // Check if user is allowed to see this product (B2B restrictions)
-        if (!$this->is_user_allowed_for_product($product_id)) {
-            return false; // Don't show buttons if user can't access this product
+        // Always show buttons to administrators for management purposes
+        if (current_user_can('manage_options') || current_user_can('manage_woocommerce') || current_user_can('edit_products')) {
+            // Administrators can always see buttons
+        } else {
+            // For non-admins, check B2B role and product visibility
+            if (!array_intersect($user_roles, $b2b_roles)) return false;
+            
+            // Check if user is allowed to see this product (B2B restrictions)
+            if (!$this->is_user_allowed_for_product($product_id)) {
+                return false; // Don't show buttons if user can't access this product
+            }
         }
         
         // Check if product has specific B2B button settings

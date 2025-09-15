@@ -1,8 +1,8 @@
 <?php
 /**
- * Email Configuration for B2B Commerce Pro
+ * Email Configuration for B2B Commerce
  * 
- * This file contains email configuration options for the B2B Commerce Pro plugin.
+ * This file contains email configuration options for the B2B Commerce plugin.
  * Uncomment and configure the settings below to enable email functionality.
  */
 

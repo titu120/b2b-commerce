@@ -80,14 +80,15 @@ class PricingManager {
             require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
             dbDelta( $sql );
         } else {
-    
-            error_log(__('B2B Commerce Pro: Using fallback table creation', 'b2b-commerce'));
+            // Fallback: try direct execution
+            $wpdb->query($sql);
+            error_log(__('B2B Commerce: Using fallback table creation', 'b2b-commerce'));
         }
         
 
         $exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table));
         if ($exists !== $table) {
-            error_log(sprintf(__('B2B Commerce Pro: Failed to create pricing table: %s', 'b2b-commerce'), $table));
+            error_log(sprintf(__('B2B Commerce: Failed to create pricing table: %s', 'b2b-commerce'), $table));
             return false;
         }
         
@@ -103,10 +104,10 @@ class PricingManager {
             $result = self::create_pricing_table();
             if ( !$result ) {
                 update_option( self::PRICING_TABLE_ERROR_OPTION, 1 );
-                error_log(__('B2B Commerce Pro: Failed to create pricing table during self-healing', 'b2b-commerce'));
+                error_log(__('B2B Commerce: Failed to create pricing table during self-healing', 'b2b-commerce'));
             } else {
                 delete_option( self::PRICING_TABLE_ERROR_OPTION );
-                error_log(__('B2B Commerce Pro: Successfully created pricing table during self-healing', 'b2b-commerce'));
+                error_log(__('B2B Commerce: Successfully created pricing table during self-healing', 'b2b-commerce'));
             }
         } else {
                 delete_option( self::PRICING_TABLE_ERROR_OPTION );
@@ -133,7 +134,7 @@ class PricingManager {
 
     public function admin_notice_table_error() {
         if ( get_option( self::PRICING_TABLE_ERROR_OPTION ) ) {
-            echo '<div class="notice notice-error"><p><strong>' . __('B2B Commerce Pro:', 'b2b-commerce') . '</strong> ' . __('Could not create the pricing rules table. Please check your database permissions or contact your host.', 'b2b-commerce') . '</p></div>';
+            echo '<div class="notice notice-error"><p><strong>' . __('B2B Commerce:', 'b2b-commerce') . '</strong> ' . __('Could not create the pricing rules table. Please check your database permissions or contact your host.', 'b2b-commerce') . '</p></div>';
         }
     }
 
@@ -602,20 +603,69 @@ class PricingManager {
         $user_id = get_current_user_id();
         $user_roles = is_user_logged_in() ? (array) wp_get_current_user()->roles : [];
         
-        // Get tiered pricing rules for this product
-        // Show all role-based rules for the product, regardless of current user
-        $rules = $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT * FROM $table WHERE product_id = %d ORDER BY role, min_qty ASC",
-                $product_id
-            )
-        );
+        // Check if user is logged in and has B2B role
+        if (!is_user_logged_in()) {
+            return ''; // Don't show tiered pricing to non-logged-in users
+        }
         
-        // If no product-specific rules, check for global rules
-        if (empty($rules)) {
+        $user = wp_get_current_user();
+        $user_roles = $user->roles;
+        $b2b_roles = apply_filters('b2b_customer_roles', ['b2b_customer', 'wholesale_customer', 'distributor', 'retailer']);
+        
+        // Always show tiered pricing to administrators for management purposes
+        if (current_user_can('manage_options') || current_user_can('manage_woocommerce') || current_user_can('edit_products')) {
+            // Administrators can always see tiered pricing
+        } else {
+            // For non-admins, check B2B role and product visibility
+            if (!array_intersect($user_roles, $b2b_roles)) {
+                return ''; // Don't show tiered pricing to non-B2B users
+            }
+            
+            // Check if user is allowed to see this product (respects B2B visibility settings)
+            if (class_exists('B2B\\ProductManager')) {
+                $product_manager = new \B2B\ProductManager();
+                if (!$product_manager->is_user_allowed_for_product($product_id)) {
+                    return ''; // Don't show tiered pricing if user can't access this product
+                }
+            }
+        }
+        
+        // Get tiered pricing rules for this product
+        // Show only rules relevant to the current user's role
+        if (current_user_can('manage_options') || current_user_can('manage_woocommerce') || current_user_can('edit_products')) {
+            // Administrators see all rules for management purposes
             $rules = $wpdb->get_results(
-                "SELECT * FROM $table WHERE product_id = 0 ORDER BY role, min_qty ASC"
+                $wpdb->prepare(
+                    "SELECT * FROM $table WHERE product_id = %d ORDER BY role, min_qty ASC",
+                    $product_id
+                )
             );
+            
+            // If no product-specific rules, check for global rules
+            if (empty($rules)) {
+                $rules = $wpdb->get_results(
+                    "SELECT * FROM $table WHERE product_id = 0 ORDER BY role, min_qty ASC"
+                );
+            }
+        } else {
+            // For non-admins, only show rules for their specific role
+            $user_role_placeholders = implode(',', array_fill(0, count($user_roles), '%s'));
+            $rules = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT * FROM $table WHERE product_id = %d AND role IN ($user_role_placeholders) ORDER BY role, min_qty ASC",
+                    array_merge([$product_id], $user_roles)
+                )
+            );
+            
+            // If no product-specific rules, check for global rules
+            if (empty($rules)) {
+                $rules = $wpdb->get_results(
+                    $wpdb->prepare(
+                        "SELECT * FROM $table WHERE product_id = 0 AND role IN ($user_role_placeholders) ORDER BY role, min_qty ASC",
+                        $user_roles
+                    )
+                );
+            }
         }
         
         if (empty($rules)) return '';
@@ -663,7 +713,32 @@ class PricingManager {
         $product_id = get_the_ID();
         $user_roles = wp_get_current_user()->roles;
         
-        if (empty($user_roles)) return '';
+        // Check if user is logged in and has B2B role
+        if (!is_user_logged_in()) {
+            return ''; // Don't show role-based pricing to non-logged-in users
+        }
+        
+        $user = wp_get_current_user();
+        $user_roles = $user->roles;
+        $b2b_roles = apply_filters('b2b_customer_roles', ['b2b_customer', 'wholesale_customer', 'distributor', 'retailer']);
+        
+        // Always show role-based pricing to administrators for management purposes
+        if (current_user_can('manage_options') || current_user_can('manage_woocommerce') || current_user_can('edit_products')) {
+            // Administrators can always see role-based pricing
+        } else {
+            // For non-admins, check B2B role and product visibility
+            if (!array_intersect($user_roles, $b2b_roles)) {
+                return ''; // Don't show role-based pricing to non-B2B users
+            }
+            
+            // Check if user is allowed to see this product (respects B2B visibility settings)
+            if (class_exists('B2B\\ProductManager')) {
+                $product_manager = new \B2B\ProductManager();
+                if (!$product_manager->is_user_allowed_for_product($product_id)) {
+                    return ''; // Don't show role-based pricing if user can't access this product
+                }
+            }
+        }
         
         $rules = $wpdb->get_results($wpdb->prepare(
             "SELECT * FROM $table WHERE (product_id = %d OR product_id = 0) AND role IN (" . implode(',', array_fill(0, count($user_roles), '%s')) . ") ORDER BY product_id DESC",
@@ -804,18 +879,8 @@ class PricingManager {
     }
 
     public function price_request() {
-        if (!is_user_logged_in()) return '';
-        
-        $output = '<div class="b2b-price-request">';
-        $output .= '<h4>' . __('Need a Quote?', 'b2b-commerce') . '</h4>';
-        $output .= '<form class="b2b-quote-form" method="post">';
-        $output .= wp_nonce_field(self::PRICE_REQUEST_NONCE, 'b2b_nonce', true, false);
-        $output .= '<input type="hidden" name="product_id" value="' . get_the_ID() . '">';
-        $output .= '<p><label>' . __('Quantity:', 'b2b-commerce') . ' <input type="number" name="quantity" min="1" value="1" required></label></p>';
-        $output .= '<p><label>' . __('Special Requirements:', 'b2b-commerce') . ' <textarea name="requirements" rows="3"></textarea></label></p>';
-        $output .= '<button type="submit" class="button">' . __('Request Quote', 'b2b-commerce') . '</button>';
-        $output .= '</form></div>';
-        
-        return $output;
+        // Quote functionality is disabled in the free version
+        // This feature is available in the Pro version
+        return '';
     }
 } 

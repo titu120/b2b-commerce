@@ -1,4 +1,4 @@
-B2B Commerce Pro - Changelog
+B2B Commerce - Changelog
 ===========================
 
 Version 1.0.0 - Initial release

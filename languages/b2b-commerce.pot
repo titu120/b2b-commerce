@@ -1,13 +1,13 @@
-# B2B Commerce Pro Translation Template
+# B2B Commerce Translation Template
 msgid ""
 msgstr ""
-"Project-Id-Version: B2B Commerce Pro 1.0.0\n"
+"Project-Id-Version: B2B Commerce 1.0.0\n"
 "POT-Creation-Date: 2024-12-19\n"
 "Language: en_US\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: B2B Commerce Pro\n"
+"X-Generator: B2B Commerce\n"
 
 #: includes/PricingManager.php:466
 msgid "Minimum quantity for wholesale pricing is %d items."

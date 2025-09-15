@@ -1,4 +1,4 @@
-/* B2B Commerce Pro - WordPress Admin Integration CSS */
+/* B2B Commerce - WordPress Admin Integration CSS */
 
 /* Ensure no red borders anywhere */
 .b2b-admin-wrapper,
@@ -13,9 +13,7 @@
 }
 
 /* Override any potential red border styling */
-.b2b-admin-wrapper * {
-    border-color: transparent !important;
-}
+
 
 /* Specific override for any red border */
 .b2b-admin-content {
@@ -188,15 +186,11 @@
     border-radius: 14px;
     padding: 28px; /* slightly larger padding for space */
     margin-bottom: 28px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
-    border: 1px solid #eef1f4; /* lighter border */
+    border:1px solid rgb(0 0 0 / .06) !important;
     transition: all 0.3s ease;
 }
 
-.b2b-admin-card:hover {
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    transform: translateY(-2px);
-}
+
 
 .b2b-admin-card-title {
     font-size: 1.25em;
@@ -213,6 +207,7 @@
     margin-right: 10px;
     color: #2196f3;
     font-size: 1.1em;
+    margin-top: 6px !important;
 }
 
 /* Form styles */
@@ -222,7 +217,7 @@
 
 .b2b-admin-form-group label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
     font-weight: 500;
     color: #23272f;
     font-size: 0.95em;
@@ -246,7 +241,7 @@
 .b2b-admin-card input[type="number"],
 .b2b-admin-card input[type="password"] {
     width: 100%;
-    padding: 12px 15px;
+    padding: 5px 15px;
     border: 2px solid #dee2e6 !important;
     border-radius: 8px;
     font-size: 0.95em;
@@ -268,7 +263,7 @@ select[name="approval"],
 select[name="bulk-action-selector"] {
     width: 100%;
     max-width:100%;
-    padding: 12px 15px;
+    padding: 5px 15px;
     border: 2px solid #dee2e6 !important;
     border-radius: 8px;
     font-size: 0.95em;
@@ -417,8 +412,8 @@ select[name="bulk-action-selector"]:focus {
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba(33,150,243,0.3);
-    margin: 5px;
     opacity:1 !important;
+    padding: 12px 18px !important;
 }
 
 .b2b-admin-btn:hover {
@@ -430,7 +425,7 @@ select[name="bulk-action-selector"]:focus {
 }
 
 .b2b-admin-btn .icon {
-    margin-right: 8px;
+    
     font-size: 1em;
 }
 
@@ -495,7 +490,7 @@ select[name="bulk-action-selector"]:focus {
 }
 
 .b2b-admin-table th {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    background: rgb(248 250 252 / 0.8);
     color: #23272f;
     font-weight: 600;
     padding: 15px 20px;
@@ -773,4 +768,8 @@ td.actions-cell span.b2b-status-badge.b2b-status-closed {
     color: #fff;
     text-align: center;
 }
-
+.analytics-title{
+    color: #fff !important;
+    font-weight: 700 !important;
+    font-size: 20px !important;
+}

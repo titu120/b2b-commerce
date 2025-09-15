@@ -1,4 +1,4 @@
-# Email Setup for B2B Commerce Pro
+# Email Setup for B2B Commerce
 
 ## Current Status
 Email functionality has been **disabled** for localhost/XAMPP compatibility. The response button now only saves responses to the database without sending emails.

@@ -2,7 +2,7 @@
 /*
 Plugin Name: B2B Commerce
 Plugin URI: https://yourwebsite.com/b2b-commerce
-Description: Free WooCommerce B2B & Wholesale Plugin with user management, pricing, and product control. Upgrade to B2B Commerce Pro for quotes, product inquiries, and bulk calculator features.
+Description: Free WooCommerce B2B & Wholesale Plugin with user management, pricing, and product control. Upgrade to B2B Commerce for quotes, product inquiries, and bulk calculator features.
 Version: 1.0.0
 Author: Your Name
 Author URI: https://yourwebsite.com
@@ -698,7 +698,7 @@ add_action('admin_enqueue_scripts', function($hook) {
         
         wp_enqueue_script(
             'b2b-commerce-admin',
-            B2B_COMMERCE_URL . 'assets/js/b2b-commerce-pro.js',
+            B2B_COMMERCE_URL . 'assets/js/b2b-commerce.js',
             ['jquery'],
             B2B_COMMERCE_VERSION,
             true
@@ -711,19 +711,16 @@ add_action('admin_enqueue_scripts', function($hook) {
             'approve_nonce' => wp_create_nonce('b2b_approve_user_nonce'),
             'reject_nonce' => wp_create_nonce('b2b_reject_user_nonce'),
             'pricing_nonce' => wp_create_nonce('b2b_pricing_nonce'),
-            'bulk_user_nonce' => wp_create_nonce('b2b_bulk_user_action'),
             'strings' => array(
                 'confirm_approve_user' => __('Are you sure you want to approve this user?', 'b2b-commerce'),
                 'confirm_reject_user' => __('Are you sure you want to reject this user?', 'b2b-commerce'),
                 'confirm_delete_pricing' => __('Are you sure you want to delete this pricing rule?', 'b2b-commerce'),
-                'confirm_bulk_action' => __('Are you sure you want to {operation} {count} users?', 'b2b-commerce'),
                 'apply' => __('Apply', 'b2b-commerce'),
                 'search' => __('Search:', 'b2b-commerce'),
                 'show_entries' => __('Show _MENU_ entries', 'b2b-commerce'),
                 'showing_entries' => __('Showing _START_ to _END_ of _TOTAL_ entries', 'b2b-commerce'),
                 'showing_empty' => __('Showing 0 to 0 of 0 entries', 'b2b-commerce'),
                 'filtered_entries' => __('(filtered from _MAX_ total entries)', 'b2b-commerce'),
-                'bulk_action_failed' => __('Bulk action failed', 'b2b-commerce'),
                 'unknown_error' => __('Unknown error', 'b2b-commerce'),
                 'request_failed' => __('Request failed', 'b2b-commerce'),
                 'error' => __('Error', 'b2b-commerce'),
@@ -741,43 +738,6 @@ add_action('wp_enqueue_scripts', function() {
     ));
 }); 
 
-// Bulk user actions (approve / reject / delete)
-add_action('wp_ajax_b2b_bulk_user_action', function() {
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error(__('Unauthorized', 'b2b-commerce'));
-    }
-    $nonce = $_POST['nonce'] ?? '';
-    if (!$nonce || !wp_verify_nonce($nonce, 'b2b_bulk_user_action')) {
-        wp_send_json_error(__('Security check failed', 'b2b-commerce'));
-    }
-
-    $operation = isset($_POST['operation']) ? sanitize_text_field($_POST['operation']) : '';
-    $user_ids = isset($_POST['user_ids']) && is_array($_POST['user_ids']) ? array_map('intval', $_POST['user_ids']) : [];
-    if (!$operation || empty($user_ids)) {
-        wp_send_json_error(__('Missing data', 'b2b-commerce'));
-    }
-
-    $affected = 0;
-    foreach ($user_ids as $uid) {
-        if ($uid <= 0) { continue; }
-        if ($operation === 'approve') {
-            update_user_meta($uid, 'b2b_approval_status', 'approved');
-            $affected++;
-        } elseif ($operation === 'reject') {
-            update_user_meta($uid, 'b2b_approval_status', 'rejected');
-            $affected++;
-        } elseif ($operation === 'delete') {
-            if (current_user_can('delete_users') && get_current_user_id() !== $uid) {
-                if (function_exists('wp_delete_user')) {
-                    $deleted = wp_delete_user($uid);
-                    if ($deleted) { $affected++; }
-                }
-            }
-        }
-    }
-
-    wp_send_json_success(array('affected' => $affected));
-});
 
 // Add admin notice about created pages
 add_action('admin_notices', function() {
@@ -809,7 +769,7 @@ add_action('admin_notices', function() {
         echo '<li>✅ ' . esc_html__('"B2B Registration" has been automatically added to your main navigation menu', 'b2b-commerce') . '</li>';
         echo '<li>' . esc_html__('Add "B2B Dashboard" to your user menu (after login)', 'b2b-commerce') . '</li>';
         echo '<li>' . sprintf(esc_html__('Configure B2B settings in %s', 'b2b-commerce'), '<a href="' . admin_url('admin.php?page=b2b-commerce') . '">' . esc_html__('B2B Commerce Settings', 'b2b-commerce') . '</a>') . '</li>';
-        echo '<li>' . esc_html__('Upgrade to B2B Commerce Pro for advanced features like quotes, product inquiries, and bulk calculator', 'b2b-commerce') . '</li>';
+        echo '<li>' . esc_html__('Upgrade to B2B Commerce for advanced features like quotes, product inquiries, and bulk calculator', 'b2b-commerce') . '</li>';
         echo '</ol>';
         echo '<p><em>' . esc_html__('All pages are ready to use with the appropriate shortcodes already added!', 'b2b-commerce') . '</em></p>';
         echo '</div>';

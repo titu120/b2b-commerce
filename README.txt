@@ -8,7 +8,7 @@ Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Free WooCommerce B2B & Wholesale Plugin with user management, pricing, and product control. Upgrade to B2B Commerce Pro for advanced features.
+Free WooCommerce B2B & Wholesale Plugin with user management, pricing, and product control. Upgrade to B2B Commerce for advanced features.
 
 == Description ==
 
@@ -26,7 +26,7 @@ B2B Commerce is a powerful free WordPress plugin that transforms your WooCommerc
 * **Import/Export** - Bulk import/export users and pricing rules
 * **REST API** - Integrate with external systems
 
-= Pro Features (B2B Commerce Pro) =
+= Pro Features (B2B Commerce) =
 
 * **Quote Management System** - Receive and manage quote requests
 * **Product Inquiry System** - Handle customer product inquiries
@@ -53,7 +53,7 @@ B2B Commerce is a powerful free WordPress plugin that transforms your WooCommerc
 
 = Upgrade to Pro =
 
-For advanced features like quote management, product inquiries, and bulk calculator, upgrade to B2B Commerce Pro. Contact us for pricing and licensing information.
+For advanced features like quote management, product inquiries, and bulk calculator, upgrade to B2B Commerce. Contact us for pricing and licensing information.
 
 == Installation ==
 
@@ -74,7 +74,7 @@ Yes, B2B Commerce is designed to work with any WordPress theme that supports Woo
 
 = How do I upgrade to Pro? =
 
-Contact us for information about B2B Commerce Pro features and pricing.
+Contact us for information about B2B Commerce features and pricing.
 
 = Is there support available? =
 

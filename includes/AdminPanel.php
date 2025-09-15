@@ -23,7 +23,7 @@
         public function add_admin_menu()
         {
             add_menu_page(
-                __('B2B Commerce Pro', 'b2b-commerce'),
+                __('B2B Commerce', 'b2b-commerce'),
                 __('B2B Commerce', 'b2b-commerce'),
                 'manage_options',
                 'b2b-dashboard',
@@ -170,7 +170,7 @@
             echo '<div class="b2b-nav-brand">';
             echo '<span class="dashicons dashicons-store" style="color: #2196f3; font-size: 1.5em; margin-right: 10px;"></span>';
             echo '<div>';
-            echo '<h2 style="margin: 0; color: #23272f; font-size: 1.3em;">' . __('B2B Commerce Pro', 'b2b-commerce') . '</h2>';
+            echo '<h2 style="margin: 0; color: #23272f; font-size: 1.3em;">' . __('B2B Commerce', 'b2b-commerce') . '</h2>';
             echo '<small style="color: #666; font-size: 0.9em;">' . __('Premium B2B & Wholesale Solution', 'b2b-commerce') . '</small>';
             echo '</div>';
             echo '</div>';
@@ -287,7 +287,7 @@
                     }
                 } catch (Exception $e) {
                     // Log error but don't break the dashboard
-                    error_log('B2B Commerce Pro WooCommerce Error: ' . $e->getMessage());
+                    error_log('B2B Commerce WooCommerce Error: ' . $e->getMessage());
                 }
             }
 
@@ -327,7 +327,7 @@
             $content = '
 <div class="b2b-admin-header">
     <h1><span class="icon dashicons dashicons-chart-area"></span>' . __('B2B Commerce Dashboard', 'b2b-commerce') . '</h1>
-    <p>' . __('Welcome to B2B Commerce Pro. Monitor your business performance and manage your B2B operations.', 'b2b-commerce') . '</p>
+    <p>' . __('Welcome to B2B Commerce. Monitor your business performance and manage your B2B operations.', 'b2b-commerce') . '</p>
 </div>
 
 <!-- Main Statistics Cards -->
@@ -335,8 +335,8 @@
     <div class="b2b-admin-card">
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
-                <h3 style="margin: 0; color: #666; font-size: 0.9em;">' . __('Total B2B Users', 'b2b-commerce') . '</h3>
-                <p style="margin: 5px 0 0 0; font-size: 2em; font-weight: bold; color: #2196f3;">' . $total_users . '</p>
+                <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Total B2B Users', 'b2b-commerce') . '</h3>
+                <p style="margin: 15px 0 5px 0; font-size: 2em; font-weight: bold; color: #2196f3;">' . $total_users . '</p>
                 <small style="color: #666;">' . __('Active B2B customers', 'b2b-commerce') . '</small>
             </div>
             <span class="dashicons dashicons-groups" style="font-size: 2.5em; color: #2196f3;"></span>
@@ -346,8 +346,8 @@
     <div class="b2b-admin-card">
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
-                <h3 style="margin: 0; color: #666; font-size: 0.9em;">' . __('Pending Approvals', 'b2b-commerce') . '</h3>
-                <p style="margin: 5px 0 0 0; font-size: 2em; font-weight: bold; color: #ff9800;">' . $pending_users . '</p>
+                <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Pending Approvals', 'b2b-commerce') . '</h3>
+                <p style="margin: 15px 0 5px 0; font-size: 2em; font-weight: bold; color: #ff9800;">' . $pending_users . '</p>
                 <small style="color: #666;">' . __('Awaiting approval', 'b2b-commerce') . '</small>
             </div>
             <span class="dashicons dashicons-clock" style="font-size: 2.5em; color: #ff9800;"></span>
@@ -357,8 +357,8 @@
     <div class="b2b-admin-card">
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
-                <h3 style="margin: 0; color: #666; font-size: 0.9em;">' . __('Total Revenue', 'b2b-commerce') . '</h3>
-                <p style="margin: 5px 0 0 0; font-size: 2em; font-weight: bold; color: #9c27b0;">$' . number_format($total_revenue, 2) . '</p>
+                <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Total Revenue', 'b2b-commerce') . '</h3>
+                <p style="margin: 15px 0 5px 0; font-size: 2em; font-weight: bold; color: #9c27b0;">$' . number_format($total_revenue, 2) . '</p>
                 <small style="color: #666;">' . __('All time revenue', 'b2b-commerce') . '</small>
             </div>
             <span class="dashicons dashicons-chart-line" style="font-size: 2.5em; color: #9c27b0;"></span>
@@ -368,8 +368,8 @@
     <div class="b2b-admin-card">
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
-                <h3 style="margin: 0; color: #666; font-size: 0.9em;">' . __('Total Orders', 'b2b-commerce') . '</h3>
-                <p style="margin: 5px 0 0 0; font-size: 2em; font-weight: bold; color: #4caf50;">' . $total_orders . '</p>
+                <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Total Orders', 'b2b-commerce') . '</h3>
+                <p style="margin: 15px 0 5px 0; font-size: 2em; font-weight: bold; color: #4caf50;">' . $total_orders . '</p>
                 <small style="color: #666;">' . __('Completed orders', 'b2b-commerce') . '</small>
             </div>
             <span class="dashicons dashicons-cart" style="font-size: 2.5em; color: #4caf50;"></span>
@@ -382,8 +382,8 @@
     <div class="b2b-admin-card">
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
-                <h3 style="margin: 0; color: #666; font-size: 0.9em;">' . __('Approved Users', 'b2b-commerce') . '</h3>
-                <p style="margin: 5px 0 0 0; font-size: 1.5em; font-weight: bold; color: #4caf50;">' . $approved_users . '</p>
+                <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Approved Users', 'b2b-commerce') . '</h3>
+                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #4caf50;">' . $approved_users . '</p>
             </div>
             <span class="dashicons dashicons-yes-alt" style="font-size: 2em; color: #4caf50;"></span>
         </div>
@@ -392,8 +392,8 @@
     <div class="b2b-admin-card">
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
-                <h3 style="margin: 0; color: #666; font-size: 0.9em;">' . __('Rejected Users', 'b2b-commerce') . '</h3>
-                <p style="margin: 5px 0 0 0; font-size: 1.5em; font-weight: bold; color: #f44336;">' . $rejected_users . '</p>
+                <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Rejected Users', 'b2b-commerce') . '</h3>
+                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #f44336;">' . $rejected_users . '</p>
             </div>
             <span class="dashicons dashicons-no-alt" style="font-size: 2em; color: #f44336;"></span>
         </div>
@@ -402,8 +402,8 @@
     <div class="b2b-admin-card">
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
-                <h3 style="margin: 0; color: #666; font-size: 0.9em;">' . __('Monthly Revenue', 'b2b-commerce') . '</h3>
-                <p style="margin: 5px 0 0 0; font-size: 1.5em; font-weight: bold; color: #ff9800;">$' . number_format($monthly_revenue, 2) . '</p>
+                <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Monthly Revenue', 'b2b-commerce') . '</h3>
+                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #ff9800;">$' . number_format($monthly_revenue, 2) . '</p>
             </div>
             <span class="dashicons dashicons-calendar-alt" style="font-size: 2em; color: #ff9800;"></span>
         </div>
@@ -412,8 +412,8 @@
     <div class="b2b-admin-card">
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
-                <h3 style="margin: 0; color: #666; font-size: 0.9em;">' . __('Pricing Rules', 'b2b-commerce') . '</h3>
-                <p style="margin: 5px 0 0 0; font-size: 1.5em; font-weight: bold; color: #2196f3;">' . $pricing_rules_count . '</p>
+                <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Pricing Rules', 'b2b-commerce') . '</h3>
+                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #2196f3;">' . $pricing_rules_count . '</p>
             </div>
             <span class="dashicons dashicons-tag" style="font-size: 2em; color: #2196f3;"></span>
         </div>
@@ -422,8 +422,8 @@
     <div class="b2b-admin-card">
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
-                <h3 style="margin: 0; color: #666; font-size: 0.9em;">' . __('Pending Quotes', 'b2b-commerce') . '</h3>
-                <p style="margin: 5px 0 0 0; font-size: 1.5em; font-weight: bold; color: #ff9800;">' . $pending_quotes . '</p>
+                <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Pending Quotes', 'b2b-commerce') . '</h3>
+                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #ff9800;">' . $pending_quotes . '</p>
             </div>
             <span class="dashicons dashicons-email-alt" style="font-size: 2em; color: #ff9800;"></span>
         </div>
@@ -432,48 +432,33 @@
     <div class="b2b-admin-card">
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
-                <h3 style="margin: 0; color: #666; font-size: 0.9em;">' . __('Pending Inquiries', 'b2b-commerce') . '</h3>
-                <p style="margin: 5px 0 0 0; font-size: 1.5em; font-weight: bold; color: #e91e63;">' . $pending_inquiries . '</p>
+                <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Pending Inquiries', 'b2b-commerce') . '</h3>
+                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #e91e63;">' . $pending_inquiries . '</p>
             </div>
             <span class="dashicons dashicons-format-chat" style="font-size: 2em; color: #e91e63;"></span>
         </div>
     </div>
 </div>
 
-<!-- Quick Actions -->
-<div class="b2b-admin-card">
-    <div class="b2b-admin-card-title"><span class="icon dashicons dashicons-admin-links"></span>' . __('Quick Actions', 'b2b-commerce') . '</div>
-    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-        <a href="' . admin_url('admin.php?page=b2b-users') . '" class="b2b-admin-btn"><span class="icon dashicons dashicons-groups"></span>' . __('Manage Users', 'b2b-commerce') . '</a>
-        <a href="' . admin_url('admin.php?page=b2b-add-user') . '" class="b2b-admin-btn b2b-admin-btn-success"><span class="icon dashicons dashicons-plus"></span>' . __('Add New User', 'b2b-commerce') . '</a>
-        <a href="' . admin_url('admin.php?page=b2b-orders') . '" class="b2b-admin-btn"><span class="icon dashicons dashicons-cart"></span>' . __('View Orders', 'b2b-commerce') . '</a>
-        <a href="' . admin_url('admin.php?page=b2b-pricing') . '" class="b2b-admin-btn"><span class="icon dashicons dashicons-tag"></span>' . __('B2B Pricing', 'b2b-commerce') . '</a>
-        <a href="' . admin_url('admin.php?page=b2b-quotes') . '" class="b2b-admin-btn"><span class="icon dashicons dashicons-email-alt"></span>' . __('Manage Quotes', 'b2b-commerce') . '</a>
-        <a href="' . admin_url('admin.php?page=b2b-inquiries') . '" class="b2b-admin-btn"><span class="icon dashicons dashicons-format-chat"></span>' . __('Product Inquiries', 'b2b-commerce') . '</a>
-        <a href="' . admin_url('admin.php?page=b2b-emails') . '" class="b2b-admin-btn"><span class="icon dashicons dashicons-email"></span>' . __('Email Templates', 'b2b-commerce') . '</a>
-        <a href="' . admin_url('admin.php?page=b2b-settings') . '" class="b2b-admin-btn"><span class="icon dashicons dashicons-admin-generic"></span>' . __('Settings', 'b2b-commerce') . '</a>
-        <a href="' . admin_url('admin.php?page=b2b-analytics') . '" class="b2b-admin-btn"><span class="icon dashicons dashicons-chart-line"></span>' . __('Analytics', 'b2b-commerce') . '</a>
-    </div>
-</div>
 
 <!-- User Role Breakdown -->
 <div class="b2b-admin-card">
     <div class="b2b-admin-card-title"><span class="icon dashicons dashicons-groups"></span>' . __('User Role Breakdown', 'b2b-commerce') . '</div>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 6px;">
-            <h4 style="margin: 0 0 5px 0; color: #2196f3;">' . __('B2B Customers', 'b2b-commerce') . '</h4>
+        <div style="text-align: center; padding: 24px; border: 1px solid rgb(0 0 0 / .06) !important; border-radius: 6px;">
+            <h3 style="margin: 0 0 15px 0; color: #2196f3;">' . __('B2B Customers', 'b2b-commerce') . '</h3>
             <p style="margin: 0; font-size: 1.5em; font-weight: bold;">' . $role_breakdown['b2b_customer'] . '</p>
         </div>
-        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 6px;">
-            <h4 style="margin: 0 0 5px 0; color: #4caf50;">' . __('Wholesale', 'b2b-commerce') . '</h4>
+        <div style="text-align: center; padding: 24px; border: 1px solid rgb(0 0 0 / .06) !important; border-radius: 6px;">
+            <h3 style="margin: 0 0 15px 0; color: #4caf50;">' . __('Wholesale', 'b2b-commerce') . '</h3>
             <p style="margin: 0; font-size: 1.5em; font-weight: bold;">' . $role_breakdown['wholesale_customer'] . '</p>
         </div>
-        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 6px;">
-            <h4 style="margin: 0 0 5px 0; color: #ff9800;">' . __('Distributors', 'b2b-commerce') . '</h4>
+        <div style="text-align: center; padding: 24px; border: 1px solid rgb(0 0 0 / .06) !important; border-radius: 6px;">
+            <h3 style="margin: 0 0 15px 0; color: #ff9800;">' . __('Distributors', 'b2b-commerce') . '</h3>
             <p style="margin: 0; font-size: 1.5em; font-weight: bold;">' . $role_breakdown['distributor'] . '</p>
         </div>
-        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 6px;">
-            <h4 style="margin: 0 0 5px 0; color: #9c27b0;">' . __('Retailers', 'b2b-commerce') . '</h4>
+        <div style="text-align: center; padding: 24px; border: 1px solid rgb(0 0 0 / .06) !important; border-radius: 6px;">
+            <h3 style="margin: 0 0 15px 0; color: #9c27b0;">' . __('Retailers', 'b2b-commerce') . '</h3>
             <p style="margin: 0; font-size: 1.5em; font-weight: bold;">' . $role_breakdown['retailer'] . '</p>
         </div>
     </div>
@@ -531,41 +516,6 @@
 </div>';
             }
 
-            // Add system status
-            $content .= '
-<div class="b2b-admin-card">
-    <div class="b2b-admin-card-title"><span class="icon dashicons dashicons-admin-tools"></span>' . __('System Status', 'b2b-commerce') . '</div>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-        <div style="padding: 15px; background: #f8f9fa; border-radius: 6px;">
-            <h4 style="margin: 0 0 5px 0; color: #23272f;">' . __('WooCommerce', 'b2b-commerce') . '</h4>
-            <p style="margin: 0; color: ' . (class_exists('WooCommerce') ? '#4caf50' : '#f44336') . ';">
-                <span class="dashicons dashicons-' . (class_exists('WooCommerce') ? 'yes-alt' : 'no-alt') . '"></span>
-                ' . (class_exists('WooCommerce') ? __('Active', 'b2b-commerce') : __('Not Active', 'b2b-commerce')) . '
-            </p>
-        </div>
-        <div style="padding: 15px; background: #f8f9fa; border-radius: 6px;">
-            <h4 style="margin: 0 0 5px 0; color: #23272f;">' . __('Database Table', 'b2b-commerce') . '</h4>
-            <p style="margin: 0; color: ' . ($pricing_rules_count >= 0 ? '#4caf50' : '#f44336') . ';">
-                <span class="dashicons dashicons-' . ($pricing_rules_count >= 0 ? 'yes-alt' : 'no-alt') . '"></span>
-                ' . ($pricing_rules_count >= 0 ? __('Ready', 'b2b-commerce') : __('Not Ready', 'b2b-commerce')) . '
-            </p>
-        </div>
-        <div style="padding: 15px; background: #f8f9fa; border-radius: 6px;">
-            <h4 style="margin: 0 0 5px 0; color: #23272f;">' . __('User Roles', 'b2b-commerce') . '</h4>
-            <p style="margin: 0; color: #4caf50;">
-                <span class="dashicons dashicons-yes-alt"></span>
-                ' . __('Configured', 'b2b-commerce') . '
-            </p>
-        </div>
-        <div style="padding: 15px; background: #f8f9fa; border-radius: 6px;">
-            <h4 style="margin: 0 0 5px 0; color: #23272f;">' . __('Plugin Version', 'b2b-commerce') . '</h4>
-            <p style="margin: 0; color: #2196f3;">
-                <span class="dashicons dashicons-info"></span>
-                v' . B2B_COMMERCE_VERSION . '
-            </p>
-        </div>
-    </div>
-</div>';
 
             $this->render_admin_wrapper('b2b-dashboard', $content);
         }
@@ -641,32 +591,16 @@
     <div class="b2b-admin-card-title"><span class="icon dashicons dashicons-groups"></span>' . __('B2B Users', 'b2b-commerce') . ' (' . count($users) . ')</div>
 
     <!-- Add New User Button -->
-    <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+    <div style="margin-bottom: 20px; padding: 24px; background: #f8f9fa; border-radius: 8px;">
         <a href="' . admin_url('admin.php?page=b2b-add-user') . '" class="b2b-admin-btn b2b-admin-btn-success" style="text-decoration: none;">
             <span class="icon dashicons dashicons-plus"></span>' . __('Add New B2B User', 'b2b-commerce') . '
         </a>
     </div>
 
-    <!-- Bulk Actions -->
-    <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-            <select id="bulk-action-selector" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                <option value="">' . __('Bulk Actions', 'b2b-commerce') . '</option>
-                <option value="approve">' . __('Approve Selected', 'b2b-commerce') . '</option>
-                <option value="reject">' . __('Reject Selected', 'b2b-commerce') . '</option>
-                <option value="delete">' . __('Delete Selected', 'b2b-commerce') . '</option>
-            </select>
-            <button class="b2b-admin-btn disabled bulk-action-btn" style="opacity: 0.5;">' . __('Apply', 'b2b-commerce') . '</button>
-            <button class="b2b-admin-btn" onclick="B2BCommercePro.exportData(\'users\')" style="margin-left: auto;">
-                <span class="icon dashicons dashicons-download"></span>' . __('Export Users', 'b2b-commerce') . '
-            </button>
-        </div>
-    </div>
 
     <table class="b2b-admin-table">
         <thead>
             <tr>
-                <th style="width: 30px;"><input type="checkbox" id="select-all-users"></th>
                 <th>' . __('User', 'b2b-commerce') . '</th>
                 <th>' . __('Email', 'b2b-commerce') . '</th>
                 <th>' . __('Role', 'b2b-commerce') . '</th>
@@ -681,7 +615,6 @@
                 $badge_class     = $approval_status === 'approved' ? 'success' : ($approval_status === 'rejected' ? 'danger' : 'warning');
                 $content .= '
             <tr>
-                <td><input type="checkbox" class="user-checkbox" value="' . $user->ID . '"></td>
                 <td><strong>' . esc_html($user->user_login) . '</strong></td>
                 <td>' . esc_html($user->user_email) . '</td>
                 <td>' . esc_html(implode(', ', $user->roles)) . '</td>
@@ -1549,7 +1482,7 @@ window.onclick = function(event) {
 
                 return true;
             } catch (Exception $e) {
-                error_log('B2B Commerce Pro Table Check Error: ' . $e->getMessage());
+                error_log('B2B Commerce Table Check Error: ' . $e->getMessage());
                 return false;
             }
         }
@@ -1734,7 +1667,7 @@ Best regards,
             $content = '
 <div class="b2b-admin-header">
     <h1><span class="icon dashicons dashicons-admin-generic"></span>' . __('Settings', 'b2b-commerce') . '</h1>
-    <p>' . __('Configure B2B Commerce Pro settings and customize your B2B experience.', 'b2b-commerce') . '</p>
+    <p>' . __('Configure B2B Commerce settings and customize your B2B experience.', 'b2b-commerce') . '</p>
 </div>';
 
             if (isset($success_message)) {
@@ -1749,10 +1682,10 @@ Best regards,
         ' . wp_nonce_field('b2b_settings', 'b2b_settings_nonce', true, false) . '
 
         <div class="b2b-admin-form-group">
-            <div style="display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #f8f9fa; border-radius: 6px; margin-bottom: 15px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 24px; background: #f8f9fa; border-radius: 6px; margin-bottom: 15px;">
                 <div>
                     <label for="b2b_company_required" style="margin: 0; font-weight: 600; color: #23272f;">' . __('Require Company Name', 'b2b-commerce') . '</label>
-                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">' . __('Yes, require company name during registration', 'b2b-commerce') . '</p>
+                    <p style="margin: 15px 0 5px 0; color: #666; font-size: 0.9em;">' . __('Yes, require company name during registration', 'b2b-commerce') . '</p>
                 </div>
                 <label class="b2b-admin-toggle">
                     <input type="checkbox" id="b2b_company_required" name="b2b_general_settings[company_required]" value="1" ' . checked($opts['company_required'] ?? '', 1, false) . '>
@@ -1762,10 +1695,10 @@ Best regards,
         </div>
 
         <div class="b2b-admin-form-group">
-            <div style="display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #f8f9fa; border-radius: 6px; margin-bottom: 15px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 24px; background: #f8f9fa; border-radius: 6px; margin-bottom: 15px;">
                 <div>
                     <label for="b2b_auto_approve" style="margin: 0; font-weight: 600; color: #23272f;">' . __('Auto-approve New Users', 'b2b-commerce') . '</label>
-                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">' . __('Automatically approve new B2B registrations', 'b2b-commerce') . '</p>
+                    <p style="margin: 15px 0 5px 0; color: #666; font-size: 0.9em;">' . __('Automatically approve new B2B registrations', 'b2b-commerce') . '</p>
                 </div>
                 <label class="b2b-admin-toggle">
                     <input type="checkbox" id="b2b_auto_approve" name="b2b_general_settings[auto_approve]" value="1" ' . checked($opts['auto_approve'] ?? '', 1, false) . '>
@@ -1775,10 +1708,10 @@ Best regards,
         </div>
 
         <div class="b2b-admin-form-group">
-            <div style="display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #f8f9fa; border-radius: 6px; margin-bottom: 15px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 24px; background: #f8f9fa; border-radius: 6px; margin-bottom: 15px;">
                 <div>
                     <label for="b2b_require_tax_id" style="margin: 0; font-weight: 600; color: #23272f;">' . __('Require Tax ID', 'b2b-commerce') . '</label>
-                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">' . __('Require tax ID during registration', 'b2b-commerce') . '</p>
+                    <p style="margin: 15px 0 5px 0; color: #666; font-size: 0.9em;">' . __('Require tax ID during registration', 'b2b-commerce') . '</p>
                 </div>
                 <label class="b2b-admin-toggle">
                     <input type="checkbox" id="b2b_require_tax_id" name="b2b_general_settings[require_tax_id]" value="1" ' . checked($opts['require_tax_id'] ?? '', 1, false) . '>
@@ -1788,10 +1721,10 @@ Best regards,
         </div>
 
         <div class="b2b-admin-form-group">
-            <div style="display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #f8f9fa; border-radius: 6px; margin-bottom: 15px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 24px; background: #f8f9fa; border-radius: 6px; margin-bottom: 15px;">
                 <div>
                     <label for="b2b_enable_white_label" style="margin: 0; font-weight: 600; color: #23272f;">' . __('Enable White Labeling', 'b2b-commerce') . '</label>
-                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">' . __('Remove plugin branding for client sites', 'b2b-commerce') . '</p>
+                    <p style="margin: 15px 0 5px 0; color: #666; font-size: 0.9em;">' . __('Remove plugin branding for client sites', 'b2b-commerce') . '</p>
                 </div>
                 <label class="b2b-admin-toggle">
                     <input type="checkbox" id="b2b_enable_white_label" name="b2b_general_settings[enable_white_label]" value="1" ' . checked($opts['enable_white_label'] ?? '', 1, false) . '>
@@ -1801,10 +1734,10 @@ Best regards,
         </div>
 
         <div class="b2b-admin-form-group">
-            <div style="display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #f8f9fa; border-radius: 6px; margin-bottom: 15px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 24px; background: #f8f9fa; border-radius: 6px; margin-bottom: 15px;">
                 <div>
                     <label for="b2b_enable_notifications" style="margin: 0; font-weight: 600; color: #23272f;">' . __('Enable Admin Notifications', 'b2b-commerce') . '</label>
-                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">' . __('Show notifications for pending approvals and new orders', 'b2b-commerce') . '</p>
+                    <p style="margin: 15px 0 5px 0; color: #666; font-size: 0.9em;">' . __('Show notifications for pending approvals and new orders', 'b2b-commerce') . '</p>
                 </div>
                 <label class="b2b-admin-toggle">
                     <input type="checkbox" id="b2b_enable_notifications" name="b2b_general_settings[enable_notifications]" value="1" ' . checked($opts['enable_notifications'] ?? '', 1, false) . '>
@@ -1814,10 +1747,10 @@ Best regards,
         </div>
 
         <div class="b2b-admin-form-group">
-            <div style="display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #f8f9fa; border-radius: 6px; margin-bottom: 15px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 24px; background: #f8f9fa; border-radius: 6px; margin-bottom: 15px;">
                 <div>
                     <label for="b2b_enable_custom_fields" style="margin: 0; font-weight: 600; color: #23272f;">' . __('Enable Custom Fields', 'b2b-commerce') . '</label>
-                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">' . __('Allow custom fields in user registration and product forms', 'b2b-commerce') . '</p>
+                    <p style="margin: 15px 0 5px 0; color: #666; font-size: 0.9em;">' . __('Allow custom fields in user registration and product forms', 'b2b-commerce') . '</p>
                 </div>
                 <label class="b2b-admin-toggle">
                     <input type="checkbox" id="b2b_enable_custom_fields" name="b2b_general_settings[enable_custom_fields]" value="1" ' . checked($opts['enable_custom_fields'] ?? '', 1, false) . '>
@@ -1857,13 +1790,13 @@ Best regards,
                 return;
             }
 
-            $content = '<div class="b2b-admin-header"><h1><span class="icon dashicons dashicons-email-alt"></span>' . __('Quote Management', 'b2b-commerce') . '</h1><p>' . __('Quote management is available in B2B Commerce Pro.', 'b2b-commerce') . '</p></div>';
+            $content = '<div class="b2b-admin-header"><h1><span class="icon dashicons dashicons-email-alt"></span>' . __('Quote Management', 'b2b-commerce') . '</h1><p>' . __('Quote management is available in B2B Commerce.', 'b2b-commerce') . '</p></div>';
 
             $content .= '<div class="b2b-admin-card" style="text-align: center; padding: 40px;">
                 <div style="font-size: 48px; color: #0073aa; margin-bottom: 20px;">
                     <span class="dashicons dashicons-star-filled"></span>
                 </div>
-                <h2 style="color: #0073aa; margin-bottom: 20px;">' . __('Upgrade to B2B Commerce Pro', 'b2b-commerce') . '</h2>
+                <h2 style="color: #0073aa; margin-bottom: 20px;">' . __('Upgrade to B2B Commerce', 'b2b-commerce') . '</h2>
                 <p style="font-size: 16px; color: #666; margin-bottom: 30px;">' . __('Get access to advanced quote management features:', 'b2b-commerce') . '</p>
                 
                 <div style="text-align: left; max-width: 600px; margin: 0 auto;">
@@ -1908,13 +1841,13 @@ Best regards,
                 return;
             }
 
-            $content = '<div class="b2b-admin-header"><h1><span class="icon dashicons dashicons-format-chat"></span>' . __('Product Inquiries', 'b2b-commerce') . '</h1><p>' . __('Product inquiries management is available in B2B Commerce Pro.', 'b2b-commerce') . '</p></div>';
+            $content = '<div class="b2b-admin-header"><h1><span class="icon dashicons dashicons-format-chat"></span>' . __('Product Inquiries', 'b2b-commerce') . '</h1><p>' . __('Product inquiries management is available in B2B Commerce.', 'b2b-commerce') . '</p></div>';
 
             $content .= '<div class="b2b-admin-card" style="text-align: center; padding: 40px;">
                 <div style="font-size: 48px; color: #0073aa; margin-bottom: 20px;">
                     <span class="dashicons dashicons-star-filled"></span>
                 </div>
-                <h2 style="color: #0073aa; margin-bottom: 20px;">' . __('Upgrade to B2B Commerce Pro', 'b2b-commerce') . '</h2>
+                <h2 style="color: #0073aa; margin-bottom: 20px;">' . __('Upgrade to B2B Commerce', 'b2b-commerce') . '</h2>
                 <p style="font-size: 16px; color: #666; margin-bottom: 30px;">' . __('Get access to advanced product inquiry features:', 'b2b-commerce') . '</p>
                 
                 <div style="text-align: left; max-width: 600px; margin: 0 auto;">
@@ -2000,7 +1933,7 @@ Best regards,
             if ($quotes_without_emails > 0) {
                 $migrate_url = wp_nonce_url(admin_url('admin-post.php?action=b2b_migrate_quotes'), 'b2b_migrate_quotes');
                 $content .= '<div class="b2b-admin-card" style="margin-bottom: 20px; background: #fff3cd; border: 1px solid #ffeaa7;">';
-                $content .= '<div style="padding: 15px;">';
+                $content .= '<div style="padding: 24px;">';
                 $content .= '<h4 style="margin: 0 0 10px 0; color: #856404;">⚠️ Data Migration Required</h4>';
                 $content .= '<p style="margin: 0 0 15px 0; color: #856404;">Found ' . $quotes_without_emails . ' quote request(s) with missing email data. Click the button below to fix this.</p>';
                 $content .= '<a href="' . esc_url($migrate_url) . '" class="b2b-admin-btn" style="background: #dc3545; color: #fff;">Migrate Quote Data</a>';
@@ -2249,7 +2182,7 @@ Best regards,
             $content .= '<div class="b2b-modal-content">';
             $content .= '<span class="b2b-modal-close">&times;</span>';
             $content .= '<h3>' . __('View Response', 'b2b-commerce') . '</h3>';
-            $content .= '<div id="response-content" style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px;"></div>';
+            $content .= '<div id="response-content" style="background: #f8f9fa; padding: 24px; border-radius: 4px; margin-bottom: 20px;"></div>';
             $content .= '<p><button type="button" class="b2b-admin-btn" onclick="$(\'#b2b-view-response-modal\').hide();">' . __('Close', 'b2b-commerce') . '</button></p>';
             $content .= '</div>';
             $content .= '</div>';
@@ -2631,17 +2564,17 @@ Best regards,
     <div class="b2b-admin-card-title"><span class="icon dashicons dashicons-chart-area"></span>' . __('Revenue Analytics', 'b2b-commerce') . '</div>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
         <div style="padding: 20px; background: linear-gradient(135deg, #4caf50, #388e3c); color: white; border-radius: 8px;">
-            <h3 style="margin: 0 0 10px 0; font-size: 1.2em;">' . __('Total Revenue', 'b2b-commerce') . '</h3>
+            <h3 class="analytics-title" style="margin: 0 0 20px 0; font-size: 1.2em;">' . __('Total Revenue', 'b2b-commerce') . '</h3>
             <div style="font-size: 2em; font-weight: bold;">$' . number_format($total_revenue, 2) . '</div>
             <p style="margin: 10px 0 0 0; opacity: 0.9;">' . __('All-time revenue from B2B orders', 'b2b-commerce') . '</p>
         </div>
-        <div style="padding: 20px; background: linear-gradient(135deg, #2196f3, #1976d2); color: white; border-radius: 8px;">
-            <h3 style="margin: 0 0 10px 0; font-size: 1.2em;">' . __('Monthly Revenue', 'b2b-commerce') . '</h3>
+        <div  style="padding: 20px; background: linear-gradient(135deg, #2196f3, #1976d2); color: white; border-radius: 8px;">
+            <h3 class="analytics-title" style="margin: 0 0 20px 0; font-size: 1.2em;">' . __('Monthly Revenue', 'b2b-commerce') . '</h3>
             <div style="font-size: 2em; font-weight: bold;">$' . number_format($monthly_revenue, 2) . '</div>
             <p style="margin: 10px 0 0 0; opacity: 0.9;">' . sprintf(__('Revenue for %s', 'b2b-commerce'), date('F Y')) . '</p>
         </div>
-        <div style="padding: 20px; background: linear-gradient(135deg, #ff9800, #f57c00); color: white; border-radius: 8px;">
-            <h3 style="margin: 0 0 10px 0; font-size: 1.2em;">' . __('Average Order Value', 'b2b-commerce') . '</h3>
+        <div  style="padding: 20px; background: linear-gradient(135deg, #ff9800, #f57c00); color: white; border-radius: 8px;">
+            <h3 class="analytics-title" style="margin: 0 0 20px 0; font-size: 1.2em;">' . __('Average Order Value', 'b2b-commerce') . '</h3>
             <div style="font-size: 2em; font-weight: bold;">$' . ($total_orders > 0 ? number_format($total_revenue / $total_orders, 2) : '0.00') . '</div>
             <p style="margin: 10px 0 0 0; opacity: 0.9;">Average revenue per order</p>
         </div>
@@ -2652,20 +2585,20 @@ Best regards,
 <div class="b2b-admin-card">
     <div class="b2b-admin-card-title"><span class="icon dashicons dashicons-groups"></span>' . __('User Analytics', 'b2b-commerce') . '</div>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;">
-        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; text-align: center;">
-            <div style="font-size: 2em; color: #2196f3; font-weight: bold;">' . number_format($total_users) . '</div>
+        <div style="padding: 24px; background: #f8f9fa; border-radius: 8px; text-align: center;">
+            <div style="font-size: 2em; color: #2196f3; font-weight: bold; margin-bottom: 10px;">' . number_format($total_users) . '</div>
             <div style="color: #666; font-size: 0.9em;">' . __('Total B2B Users', 'b2b-commerce') . '</div>
         </div>
-        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; text-align: center;">
-            <div style="font-size: 2em; color: #4caf50; font-weight: bold;">' . number_format($approved_users) . '</div>
+        <div style="padding: 24px; background: #f8f9fa; border-radius: 8px; text-align: center;">
+            <div style="font-size: 2em; color: #4caf50; font-weight: bold; margin-bottom: 10px;">' . number_format($approved_users) . '</div>
             <div style="color: #666; font-size: 0.9em;">' . __('Approved Users', 'b2b-commerce') . '</div>
         </div>
-        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; text-align: center;">
-            <div style="font-size: 2em; color: #ff9800; font-weight: bold;">' . number_format($pending_users) . '</div>
+        <div style="padding: 24px; background: #f8f9fa; border-radius: 8px; text-align: center;">
+            <div style="font-size: 2em; color: #ff9800; font-weight: bold; margin-bottom: 10px;">' . number_format($pending_users) . '</div>
             <div style="color: #666; font-size: 0.9em;">' . __('Pending Approvals', 'b2b-commerce') . '</div>
         </div>
-        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; text-align: center;">
-            <div style="font-size: 2em; color: #9c27b0; font-weight: bold;">' . ($total_users > 0 ? round(($approved_users / $total_users) * 100, 1) : '0') . '%</div>
+        <div style="padding: 24px; background: #f8f9fa; border-radius: 8px; text-align: center;">
+            <div style="font-size: 2em; color: #9c27b0; font-weight: bold; margin-bottom: 10px;">' . ($total_users > 0 ? round(($approved_users / $total_users) * 100, 1) : '0') . '%</div>
             <div style="color: #666; font-size: 0.9em;">' . __('Approval Rate', 'b2b-commerce') . '</div>
         </div>
     </div>
@@ -2724,64 +2657,24 @@ Best regards,
         <div style="padding: 20px; background: #f8f9fa; border-radius: 8px;">
             <h4 style="margin: 0 0 10px 0; color: #23272f;">User Growth</h4>
             <div style="font-size: 1.5em; font-weight: bold; color: #2196f3;">' . number_format($total_users) . '</div>
-            <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">Total registered B2B users</p>
+            <p style="margin: 15px 0 5px 0; color: #666; font-size: 0.9em;">Total registered B2B users</p>
         </div>
         <div style="padding: 20px; background: #f8f9fa; border-radius: 8px;">
             <h4 style="margin: 0 0 10px 0; color: #23272f;">Order Volume</h4>
             <div style="font-size: 1.5em; font-weight: bold; color: #4caf50;">' . number_format($total_orders) . '</div>
-            <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">Total completed orders</p>
+            <p style="margin: 15px 0 5px 0; color: #666; font-size: 0.9em;">Total completed orders</p>
         </div>
         <div style="padding: 20px; background: #f8f9fa; border-radius: 8px;">
             <h4 style="margin: 0 0 10px 0; color: #23272f;">Revenue Growth</h4>
             <div style="font-size: 1.5em; font-weight: bold; color: #ff9800;">$' . number_format($total_revenue, 2) . '</div>
-            <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">Total revenue generated</p>
+            <p style="margin: 15px 0 5px 0; color: #666; font-size: 0.9em;">Total revenue generated</p>
         </div>
         <div style="padding: 20px; background: #f8f9fa; border-radius: 8px;">
             <h4 style="margin: 0 0 10px 0; color: #23272f;">Pricing Rules</h4>
             <div style="font-size: 1.5em; font-weight: bold; color: #9c27b0;">' . number_format($pricing_rules_count) . '</div>
-            <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">Active pricing rules</p>
+            <p style="margin: 15px 0 5px 0; color: #666; font-size: 0.9em;">Active pricing rules</p>
         </div>
     </div>
-</div>
-
-<!-- Quick Actions -->
-<div class="b2b-admin-card">
-    <div class="b2b-admin-card-title"><span class="icon dashicons dashicons-admin-tools"></span>' . __('Quick Actions', 'b2b-commerce') . '</div>
-    <div class="b2b-quick-actions">
-        <a href="' . admin_url('admin.php?page=b2b-add-user') . '" class="b2b-admin-btn">
-            <span class="icon dashicons dashicons-plus"></span>' . __('Add B2B User', 'b2b-commerce') . '
-        </a>
-        <a href="' . admin_url('admin.php?page=b2b-pricing') . '" class="b2b-admin-btn">
-            <span class="icon dashicons dashicons-tag"></span>' . __('Manage Pricing', 'b2b-commerce') . '
-        </a>
-        <a href="' . admin_url('admin.php?page=b2b-orders') . '" class="b2b-admin-btn">
-            <span class="icon dashicons dashicons-cart"></span>' . __('View Orders', 'b2b-commerce') . '
-        </a>
-        <a href="' . admin_url('admin.php?page=b2b-analytics') . '" class="b2b-admin-btn">
-            <span class="icon dashicons dashicons-chart-line"></span>' . __('Analytics', 'b2b-commerce') . '
-        </a>
-        <button onclick="importDemoData()" class="b2b-admin-btn b2b-admin-btn-success">
-            <span class="icon dashicons dashicons-download"></span>' . __('Import Demo Data', 'b2b-commerce') . '
-        </button>
-    </div>
-
-    <script>
-    function importDemoData() {
-        if (confirm("' . esc_js(__('This will import demo B2B users and pricing rules. Continue?', 'b2b-commerce')) . '")) {
-            jQuery.post(ajaxurl, {
-                action: "b2b_import_demo_data",
-                nonce: "' . wp_create_nonce('b2b_import_demo') . '"
-            }, function(response) {
-                if (response.success) {
-                    alert("' . esc_js(__('Demo data imported successfully! Refresh the page to see the changes.', 'b2b-commerce')) . '");
-                    location.reload();
-                } else {
-                    alert("' . esc_js(__('Error importing demo data:', 'b2b-commerce')) . ' " + response.data);
-                }
-            });
-        }
-    }
-    </script>
 </div>';
 
             $this->render_admin_wrapper('b2b-analytics', $content);
@@ -2796,56 +2689,56 @@ Best regards,
             $content = '
 <div class="b2b-admin-header">
     <h1><span class="icon dashicons dashicons-admin-tools"></span>' . __('System Test', 'b2b-commerce') . '</h1>
-    <p>' . __('Run various checks to ensure B2B Commerce Pro is functioning correctly.', 'b2b-commerce') . '</p>
+    <p>' . __('Run various checks to ensure B2B Commerce is functioning correctly.', 'b2b-commerce') . '</p>
 </div>
 
 <!-- System Status Overview -->
 <div class="b2b-admin-card">
     <div class="b2b-admin-card-title"><span class="icon dashicons dashicons-admin-tools"></span>' . __('System Status Overview', 'b2b-commerce') . '</div>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-        <div style="padding: 15px; background: #f8f9fa; border-radius: 6px;">
+        <div style="padding: 24px; background: #f8f9fa; border-radius: 6px;">
             <h4 style="margin: 0 0 5px 0; color: #23272f;">' . __('WooCommerce', 'b2b-commerce') . '</h4>
             <p style="margin: 0; color: ' . ($tests['woocommerce']['status'] === 'OK' ? '#4caf50' : '#f44336') . ';">
                 <span class="dashicons dashicons-' . ($tests['woocommerce']['status'] === 'OK' ? 'yes-alt' : 'no-alt') . '"></span>
                 ' . $tests['woocommerce']['message'] . '
             </p>
         </div>
-        <div style="padding: 15px; background: #f8f9fa; border-radius: 6px;">
+        <div style="padding: 24px; background: #f8f9fa; border-radius: 6px;">
             <h4 style="margin: 0 0 5px 0; color: #23272f;">' . __('Database', 'b2b-commerce') . '</h4>
             <p style="margin: 0; color: ' . ($tests['database']['status'] === 'OK' ? '#4caf50' : '#f44336') . ';">
                 <span class="dashicons dashicons-' . ($tests['database']['status'] === 'OK' ? 'yes-alt' : 'no-alt') . '"></span>
                 ' . $tests['database']['message'] . '
             </p>
         </div>
-        <div style="padding: 15px; background: #f8f9fa; border-radius: 6px;">
+        <div style="padding: 24px; background: #f8f9fa; border-radius: 6px;">
             <h4 style="margin: 0 0 5px 0; color: #23272f;">' . __('Database Tables', 'b2b-commerce') . '</h4>
             <p style="margin: 0; color: ' . ($tests['tables']['status'] === 'OK' ? '#4caf50' : '#f44336') . ';">
                 <span class="dashicons dashicons-' . ($tests['tables']['status'] === 'OK' ? 'yes-alt' : 'no-alt') . '"></span>
                 ' . $tests['tables']['message'] . '
             </p>
         </div>
-        <div style="padding: 15px; background: #f8f9fa; border-radius: 6px;">
+        <div style="padding: 24px; background: #f8f9fa; border-radius: 6px;">
             <h4 style="margin: 0 0 5px 0; color: #23272f;">' . __('Email', 'b2b-commerce') . '</h4>
             <p style="margin: 0; color: ' . ($tests['email']['status'] === 'OK' ? '#4caf50' : '#f44336') . ';">
                 <span class="dashicons dashicons-' . ($tests['email']['status'] === 'OK' ? 'yes-alt' : 'no-alt') . '"></span>
                 ' . $tests['email']['message'] . '
             </p>
         </div>
-        <div style="padding: 15px; background: #f8f9fa; border-radius: 6px;">
+        <div style="padding: 24px; background: #f8f9fa; border-radius: 6px;">
             <h4 style="margin: 0 0 5px 0; color: #23272f;">' . __('Permissions', 'b2b-commerce') . '</h4>
             <p style="margin: 0; color: ' . ($tests['permissions']['status'] === 'OK' ? '#4caf50' : '#f44336') . ';">
                 <span class="dashicons dashicons-' . ($tests['permissions']['status'] === 'OK' ? 'yes-alt' : 'no-alt') . '"></span>
                 ' . $tests['permissions']['message'] . '
             </p>
         </div>
-        <div style="padding: 15px; background: #f8f9fa; border-radius: 6px;">
+        <div style="padding: 24px; background: #f8f9fa; border-radius: 6px;">
             <h4 style="margin: 0 0 5px 0; color: #23272f;">' . __('User Roles', 'b2b-commerce') . '</h4>
             <p style="margin: 0; color: ' . ($tests['user_roles']['status'] === 'OK' ? '#4caf50' : '#f44336') . ';">
                 <span class="dashicons dashicons-' . ($tests['user_roles']['status'] === 'OK' ? 'yes-alt' : 'no-alt') . '"></span>
                 ' . $tests['user_roles']['message'] . '
             </p>
         </div>
-        <div style="padding: 15px; background: #f8f9fa; border-radius: 6px;">
+        <div style="padding: 24px; background: #f8f9fa; border-radius: 6px;">
             <h4 style="margin: 0 0 5px 0; color: #23272f;">' . __('Plugin Version', 'b2b-commerce') . '</h4>
             <p style="margin: 0; color: #2196f3;">
                 <span class="dashicons dashicons-info"></span>
@@ -2993,7 +2886,7 @@ Best regards,
                     'message' => __('Admin CSS files present', 'b2b-commerce'),
                 ],
                 __('JS Files', 'b2b-commerce')             => [
-                    'status'  => file_exists(B2B_COMMERCE_PATH . 'assets/js/b2b-commerce-pro.js') ? 'OK' : 'FAILED',
+                    'status'  => file_exists(B2B_COMMERCE_PATH . 'assets/js/b2b-commerce.js') ? 'OK' : 'FAILED',
                     'message' => __('Admin JavaScript files present', 'b2b-commerce'),
                 ],
                 __('Database Permissions', 'b2b-commerce') => [
@@ -3303,7 +3196,7 @@ Best regards,
 
                     if ($pending_users > 0 && ! in_array('pending_approvals', $dismissed_notifications)) {
                         echo '<div class="notice notice-warning is-dismissible" data-notification="pending_approvals">
-                <p><strong>B2B Commerce Pro:</strong> You have <strong>' . $pending_users . '</strong> pending B2B user approval(s).
+                <p><strong>B2B Commerce:</strong> You have <strong>' . $pending_users . '</strong> pending B2B user approval(s).
                 <a href="' . admin_url('admin.php?page=b2b-users') . '">Review now</a></p>
             </div>';
                     }
@@ -3319,7 +3212,7 @@ Best regards,
 
                         if (count($recent_orders) > 0 && ! in_array('recent_orders', $dismissed_notifications)) {
                             echo '<div class="notice notice-info is-dismissible" data-notification="recent_orders">
-                    <p><strong>B2B Commerce Pro:</strong> You have <strong>' . count($recent_orders) . '</strong> new order(s) in the last 24 hours.
+                    <p><strong>B2B Commerce:</strong> You have <strong>' . count($recent_orders) . '</strong> new order(s) in the last 24 hours.
                     <a href="' . admin_url('admin.php?page=b2b-orders') . '">View orders</a></p>
                 </div>';
                         }

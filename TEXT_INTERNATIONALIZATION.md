@@ -1,4 +1,4 @@
-# B2B Commerce Pro - Text Internationalization Status
+# B2B Commerce - Text Internationalization Status
 
 ## ✅ Completed (Fixed)
 
@@ -41,7 +41,7 @@
 - [x] "Savings" → `__('Savings', 'b2b-commerce')`
 
 ### b2b-commerce-pro.php
-- [x] "B2B Commerce Pro:" → `__('B2B Commerce Pro:', 'b2b-commerce')`
+- [x] "B2B Commerce:" → `__('B2B Commerce:', 'b2b-commerce')`
 - [x] "WooCommerce is required for this plugin to work." → `__('WooCommerce is required for this plugin to work.', 'b2b-commerce')`
 - [x] "Required classes not found. Please reinstall the plugin." → `__('Required classes not found. Please reinstall the plugin.', 'b2b-commerce')`
 
@@ -163,7 +163,7 @@
 
 **ALL HARDCODED STRINGS HAVE BEEN SUCCESSFULLY INTERNATIONALIZED!**
 
-The B2B Commerce Pro plugin is now **100% ready for CodeCanyon submission** with complete internationalization support.
+The B2B Commerce plugin is now **100% ready for CodeCanyon submission** with complete internationalization support.
 
 ## 🔧 How to Fix
 

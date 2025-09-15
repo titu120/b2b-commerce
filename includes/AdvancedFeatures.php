@@ -26,7 +26,7 @@ class AdvancedFeatures {
         add_action( 'wp_ajax_nopriv_b2b_quote_request', [ $this, 'handle_quote_request' ] );
         add_action( 'wp_ajax_b2b_product_inquiry', [ $this, 'handle_product_inquiry' ] );
         add_action( 'wp_ajax_nopriv_b2b_product_inquiry', [ $this, 'handle_product_inquiry' ] );
-        // JavaScript is handled by b2b-commerce-pro.js file
+        // JavaScript is handled by b2b-commerce.js file
         // Bulk pricing calculator - REMOVED (Pro feature)
         // Catalog mode & checkout controls
         add_filter( 'woocommerce_is_purchasable', [ $this, 'maybe_disable_purchasable' ], 5, 2 );
@@ -451,142 +451,27 @@ class AdvancedFeatures {
         echo '</div>';
     }
     
-    // Quote request button
+    // Quote request button - DISABLED in free version
     public function quote_request_button() {
-        global $product;
-        if (!$product) return;
-        
-        // Prevent duplicate buttons
-        static $quote_button_rendered = false;
-        if ($quote_button_rendered) return;
-        $quote_button_rendered = true;
-        
-        // Use helper function to check if buttons should be shown
-        if (class_exists('B2B\\ProductManager')) {
-            $product_manager = new ProductManager();
-            if (!$product_manager->should_show_b2b_buttons($product->get_id())) {
-                return;
-            }
-        }
-        
-        $user = wp_get_current_user();
-        echo '<button type="button" class="button b2b-quote-btn" data-product-id="' . $product->get_id() . '">';
-        echo '<span class="dashicons dashicons-email-alt"></span> ' . __('Request Quote', 'b2b-commerce');
-        echo '</button>';
-        echo '<div class="b2b-quote-form" style="display: none;">';
-        echo '<h4>' . __('Request Quote', 'b2b-commerce') . '</h4>';
-        echo '<p><label>' . __('Your Email:', 'b2b-commerce') . ' <input type="email" name="quote_email" value="' . esc_attr($user->user_email) . '" required></label></p>';
-        echo '<p><label>' . __('Quantity:', 'b2b-commerce') . ' <input type="number" name="quote_qty" min="1" value="1"></label></p>';
-        echo '<p><label>' . __('Message:', 'b2b-commerce') . ' <textarea name="quote_message" placeholder="' . __('Additional requirements...', 'b2b-commerce') . '"></textarea></label></p>';
-        echo '<div class="b2b-form-buttons">';
-        echo '<button type="button" class="button button-primary submit-quote">' . __('Submit Quote Request', 'b2b-commerce') . '</button>';
-        echo '<button type="button" class="button cancel-quote">' . __('Cancel', 'b2b-commerce') . '</button>';
-        echo '</div>';
-        echo '</div>';
+        // Quote functionality is disabled in the free version
+        // This feature is available in the Pro version
+        return;
     }
     
-    // Product inquiry button
+    // Product inquiry button - DISABLED in free version
     public function product_inquiry_button() {
-        global $product;
-        
-        // Use helper function to check if buttons should be shown
-        if (class_exists('B2B\\ProductManager')) {
-            $product_manager = new ProductManager();
-            if (!$product_manager->should_show_b2b_buttons($product->get_id())) {
-                return;
-            }
-        }
-        
-        $user = wp_get_current_user();
-        echo '<button class="button b2b-inquiry-btn" data-product-id="' . esc_attr( $product->get_id() ) . '">';
-        echo '<span class="dashicons dashicons-format-chat"></span> ' . __('Product Inquiry', 'b2b-commerce');
-        echo '</button>';
-        echo '<div class="b2b-inquiry-form" style="display: none;">';
-        echo '<h4>' . __('Product Inquiry', 'b2b-commerce') . '</h4>';
-        echo '<p><label>' . __('Your Email:', 'b2b-commerce') . ' <input type="email" name="inquiry_email" value="' . esc_attr($user->user_email) . '" required></label></p>';
-        echo '<p><label>' . __('Message:', 'b2b-commerce') . ' <textarea name="inquiry_message" placeholder="' . __('Tell us about your inquiry...', 'b2b-commerce') . '" required></textarea></label></p>';
-        echo '<div class="b2b-form-buttons">';
-        echo '<button type="button" class="button button-primary submit-inquiry">' . __('Send Inquiry', 'b2b-commerce') . '</button>';
-        echo '<button type="button" class="button cancel-inquiry">' . __('Cancel', 'b2b-commerce') . '</button>';
-        echo '</div>';
-        echo '</div>';
+        // Product inquiry functionality is disabled in the free version
+        // This feature is available in the Pro version
+        return;
     }
     
-    // JavaScript functionality is handled by b2b-commerce-pro.js file
+    // JavaScript functionality is handled by b2b-commerce.js file
     
-    // Handle quote request
+    // Handle quote request - DISABLED in free version
     public function handle_quote_request() {
-        // CSRF protection - accept either the global AJAX nonce or legacy b2b_quote_request nonce
-        $nonce = isset($_POST['nonce']) ? $_POST['nonce'] : '';
-        $nonce_ok = false;
-        if ( $nonce && wp_verify_nonce( $nonce, 'b2b_ajax_nonce' ) ) {
-            $nonce_ok = true;
-        } elseif ( $nonce && wp_verify_nonce( $nonce, 'b2b_quote_request' ) ) {
-            $nonce_ok = true;
-        }
-        if ( ! $nonce_ok ) {
-            // Debug: Log nonce verification failure
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log(__('B2B Quote Request Debug - Nonce verification failed. Received nonce:', 'b2b-commerce') . ' ' . $nonce);
-            }
-            wp_send_json_error( __('Security check failed', 'b2b-commerce') );
-            return;
-        }
-        if (!is_user_logged_in()) {
-            wp_send_json_error(__('Please log in to request quotes', 'b2b-commerce'));
-            return;
-        }
-        
-        $product_id = intval($_POST['product_id']);
-        $quantity = intval($_POST['quantity']);
-        $message = sanitize_textarea_field($_POST['message']);
-        $email = sanitize_email($_POST['email']);
-        $user_id = get_current_user_id();
-        
-        if (!$product_id || !$quantity || !$email) {
-            // Debug: Log the received data
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log(__('B2B Quote Request Debug - Nonce verification failed', 'b2b-commerce'));
-            }
-            wp_send_json_error(__('Invalid request data - Missing required fields', 'b2b-commerce'));
-            return;
-        }
-        
-        $product = wc_get_product($product_id);
-        if (!$product) {
-            wp_send_json_error(__('Product not found', 'b2b-commerce'));
-            return;
-        }
-        
-        // Save quote request
-        $quote_data = [
-            'product_id' => $product_id,
-            'quantity' => $quantity,
-            'message' => $message,
-            'user_id' => $user_id,
-            'user_email' => $email,
-            'status' => 'pending',
-            'date' => current_time('mysql')
-        ];
-        
-        $quotes = get_option('b2b_quote_requests', []);
-        $quotes[] = $quote_data;
-        update_option('b2b_quote_requests', $quotes);
-        
-        // Send email notification to admin
-        $admin_email = get_option('admin_email');
-        $subject = __('New B2B Quote Request', 'b2b-commerce');
-        $message_body = sprintf(
-            __('New quote request received for %s (Qty: %d) from user: %s (ID: %d)', 'b2b-commerce'),
-            $product->get_name(),
-            $quantity,
-            $email,
-            $user_id
-        );
-        
-        wp_mail($admin_email, $subject, $message_body);
-        
-        wp_send_json_success(__('Quote request submitted successfully', 'b2b-commerce'));
+        // Quote functionality is disabled in the free version
+        // This feature is available in the Pro version
+        wp_send_json_error( __('Quote functionality is not available in the free version. Please upgrade to B2B Commerce Pro.', 'b2b-commerce') );
     }
     
     // Handle product inquiry

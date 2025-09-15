@@ -1,4 +1,4 @@
-# B2B Commerce Pro - Complete Features Overview
+# B2B Commerce - Complete Features Overview
 
 ## 🚀 **Premium B2B & Wholesale Plugin for WooCommerce**
 

@@ -1,10 +1,10 @@
-# B2B Commerce Pro - Checkout Issue Fix
+# B2B Commerce - Checkout Issue Fix
 
 ## Problem
 When wholesale customers tried to checkout with fewer items than the minimum quantity requirement, they would see an error message: "There are some issues with the items in your cart. Please go back to the cart page and resolve these issues before checking out."
 
 ## Root Cause
-The B2B Commerce Pro plugin was enforcing strict minimum quantity requirements:
+The B2B Commerce plugin was enforcing strict minimum quantity requirements:
 - Wholesale customers: Minimum 10 items
 - Distributors: Minimum 50 items  
 - Retailers: Minimum 5 items
