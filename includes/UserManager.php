@@ -609,6 +609,7 @@ class UserManager {
         $email = sanitize_email($user_data['email']);
         
         if (username_exists($username) || email_exists($email)) {
+            // translators: %s is the username that already exists
             throw new Exception(sprintf(__('User already exists: %s', 'b2b-commerce'), $username));
         }
         

@@ -362,6 +362,7 @@ add_action('wp_ajax_b2b_save_pricing_rule', function() {
         $required_fields = ['role', 'type', 'price', 'min_qty'];
         foreach ($required_fields as $field) {
             if (!isset($_POST[$field]) || empty($_POST[$field])) {
+                // translators: %s is the field name that is missing
                 wp_send_json_error(sprintf(__('Missing required field: %s', 'b2b-commerce'), $field));
                 return;
             }
@@ -403,6 +404,7 @@ add_action('wp_ajax_b2b_save_pricing_rule', function() {
         $result = $wpdb->insert($table, $data);
         
         if ($result === false) {
+            // translators: %s is the database error message
             wp_send_json_error(sprintf(__('Database error: %s', 'b2b-commerce'), $wpdb->last_error));
         } else {
             wp_send_json_success(__('Pricing rule saved successfully', 'b2b-commerce'));
@@ -438,6 +440,7 @@ add_action('wp_ajax_b2b_delete_pricing_rule', function() {
         $result = $wpdb->delete($table, array('id' => $rule_id), array('%d'));
         
         if ($result === false) {
+            // translators: %s is the database error message
             wp_send_json_error(sprintf(__('Database error: %s', 'b2b-commerce'), $wpdb->last_error));
         } else {
             wp_send_json_success(__('Pricing rule deleted successfully', 'b2b-commerce'));
@@ -679,9 +682,11 @@ add_action('wp_ajax_b2b_import_demo_data', function() {
             }
         }
         
-        wp_send_json_success(sprintf(__('Demo data imported successfully! Created %d users and %d pricing rules.', 'b2b-commerce'), count($demo_users), count($demo_rules)));
+        // translators: %1$d is the number of users created, %2$d is the number of pricing rules created
+        wp_send_json_success(sprintf(__('Demo data imported successfully! Created %1$d users and %2$d pricing rules.', 'b2b-commerce'), count($demo_users), count($demo_rules)));
         
     } catch (Exception $e) {
+        // translators: %s is the error message
         wp_send_json_error(sprintf(__('Error importing demo data: %s', 'b2b-commerce'), $e->getMessage()));
     }
 });
@@ -768,6 +773,7 @@ add_action('admin_notices', function() {
         echo '<ol style="list-style: decimal; margin-left: 20px;">';
         echo '<li>✅ ' . esc_html__('"B2B Registration" has been automatically added to your main navigation menu', 'b2b-commerce') . '</li>';
         echo '<li>' . esc_html__('Add "B2B Dashboard" to your user menu (after login)', 'b2b-commerce') . '</li>';
+        // translators: %s is the link to B2B Commerce Settings
         echo '<li>' . sprintf(esc_html__('Configure B2B settings in %s', 'b2b-commerce'), '<a href="' . admin_url('admin.php?page=b2b-commerce') . '">' . esc_html__('B2B Commerce Settings', 'b2b-commerce') . '</a>') . '</li>';
         echo '<li>' . esc_html__('Upgrade to B2B Commerce for advanced features like quotes, product inquiries, and bulk calculator', 'b2b-commerce') . '</li>';
         echo '</ol>';

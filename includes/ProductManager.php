@@ -661,13 +661,15 @@ class ProductManager {
                     $updated++;
                 }
             } catch (Exception $e) {
-                $errors[] = sprintf(__('Row %d: %s', 'b2b-commerce'), ($imported + $updated + 1), $e->getMessage());
+                // translators: %1$d is the row number, %2$s is the error message
+                $errors[] = sprintf(__('Row %1$d: %2$s', 'b2b-commerce'), ($imported + $updated + 1), $e->getMessage());
             }
         }
         
         fclose($handle);
         
-        $message = sprintf(__('Imported %d new products and updated %d existing products.', 'b2b-commerce'), $imported, $updated);
+        // translators: %1$d is the number of imported products, %2$d is the number of updated products
+        $message = sprintf(__('Imported %1$d new products and updated %2$d existing products.', 'b2b-commerce'), $imported, $updated);
         if (!empty($errors)) {
             $message .= ' ' . __('Errors:', 'b2b-commerce') . ' ' . implode(', ', $errors);
         }
@@ -684,6 +686,7 @@ class ProductManager {
         $existing_product_id = wc_get_product_id_by_sku($sku);
         
         if ($existing_product_id && !isset($_POST['update_existing'])) {
+            // translators: %s is the product SKU
             throw new Exception(sprintf(__('Product with SKU %s already exists', 'b2b-commerce'), $sku));
         }
         
@@ -779,24 +782,28 @@ class ProductManager {
             $qty = intval($product_qtys[$index] ?? 1);
             
             if (empty($sku)) {
+                // translators: %s is the product search term
                 $errors[] = sprintf(__('Product not found: %s', 'b2b-commerce'), $search);
                 continue;
             }
             
             $product_id = wc_get_product_id_by_sku($sku);
             if (!$product_id) {
+                // translators: %s is the product SKU
                 $errors[] = sprintf(__('Product with SKU %s not found', 'b2b-commerce'), $sku);
                 continue;
             }
             
             $product = wc_get_product($product_id);
             if (!$product) {
+                // translators: %s is the product SKU
                 $errors[] = sprintf(__('Cannot load product: %s', 'b2b-commerce'), $sku);
                 continue;
             }
             
             // Check if user can see this product
             if (!$this->can_user_see_product($product_id)) {
+                // translators: %s is the product name
                 $errors[] = sprintf(__("You don't have permission to order: %s", 'b2b-commerce'), $product->get_name());
                 continue;
             }
@@ -806,11 +813,13 @@ class ProductManager {
             if ($cart_item_key) {
                 $added_to_cart++;
             } else {
+                // translators: %s is the product name
                 $errors[] = sprintf(__('Failed to add to cart: %s', 'b2b-commerce'), $product->get_name());
             }
         }
         
         if ($added_to_cart > 0) {
+            // translators: %d is the number of products added to cart
             wc_add_notice(sprintf(__('Added %d products to cart successfully.', 'b2b-commerce'), $added_to_cart), 'success');
         }
         

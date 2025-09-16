@@ -1446,6 +1446,7 @@ window.onclick = function(event) {
                 }
 
                 if ($result === false) {
+                    // translators: %s is the database error message
                     echo '<div class="notice notice-error"><p>' . sprintf(__('Failed to save pricing rule. Database error: %s', 'b2b-commerce'), esc_html($wpdb->last_error)) . '</p></div>';
                 } else {
                     // Redirect with success message
@@ -1454,6 +1455,7 @@ window.onclick = function(event) {
                 }
 
             } catch (Exception $e) {
+                // translators: %s is the error message
                 echo '<div class="notice notice-error"><p>' . sprintf(__('Error saving pricing rule: %s', 'b2b-commerce'), esc_html($e->getMessage())) . '</p></div>';
             }
         }
@@ -1919,6 +1921,7 @@ Best regards,
             if (isset($_GET['updated']) && $_GET['updated'] == '1') {
                 $status      = sanitize_text_field($_GET['status'] ?? '');
                 $status_text = ucfirst($status);
+                // translators: %s is the quote status (approved, rejected, etc.)
                 $content .= '<div class="notice notice-success is-dismissible"><p><strong>' . __('Success!', 'b2b-commerce') . '</strong> ' . sprintf(__('Quote has been %s.', 'b2b-commerce'), esc_html($status_text)) . '</p></div>';
             }
 
@@ -2340,6 +2343,7 @@ Best regards,
                 $this->send_quote_status_email($quotes[$index], $status);
 
                 wp_send_json_success([
+                    // translators: %s is the quote status (approved, rejected, etc.)
                     'message' => sprintf(__('Quote has been %s.', 'b2b-commerce'), ucfirst($status)),
                     'status'  => $status,
                 ]);
@@ -2571,7 +2575,9 @@ Best regards,
         <div  style="padding: 20px; background: linear-gradient(135deg, #2196f3, #1976d2); color: white; border-radius: 8px;">
             <h3 class="analytics-title" style="margin: 0 0 20px 0; font-size: 1.2em;">' . __('Monthly Revenue', 'b2b-commerce') . '</h3>
             <div style="font-size: 2em; font-weight: bold;">$' . number_format($monthly_revenue, 2) . '</div>
-            <p style="margin: 10px 0 0 0; opacity: 0.9;">' . sprintf(__('Revenue for %s', 'b2b-commerce'), date('F Y')) . '</p>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">' . 
+                // translators: %s is the month and year (e.g., "January 2024")
+                sprintf(__('Revenue for %s', 'b2b-commerce'), date('F Y')) . '</p>
         </div>
         <div  style="padding: 20px; background: linear-gradient(135deg, #ff9800, #f57c00); color: white; border-radius: 8px;">
             <h3 class="analytics-title" style="margin: 0 0 20px 0; font-size: 1.2em;">' . __('Average Order Value', 'b2b-commerce') . '</h3>
@@ -3308,23 +3314,26 @@ Best regards,
                     $product      = wc_get_product($quote['product_id']);
                     $product_name = $product ? $product->get_name() : __('Product', 'b2b-commerce');
 
-                    $subject = sprintf(__('Your quote request for %s has been %s', 'b2b-commerce'), $product_name, $status);
+                    // translators: %1$s is the product name, %2$s is the quote status (approved, rejected, etc.)
+                    $subject = sprintf(__('Your quote request for %1$s has been %2$s', 'b2b-commerce'), $product_name, $status);
 
+                    // translators: %1$s is product name, %2$d is quantity, %3$s is status, %4$s is product name again, %5$d is quantity again, %6$s is customer message, %7$s is status capitalized, %8$s is additional message, %9$s is site name
                     $message = sprintf(
+                        // translators: %1$s is product name, %2$d is quantity, %3$s is status, %4$s is product name again, %5$d is quantity again, %6$s is customer message, %7$s is status capitalized, %8$s is additional message, %9$s is site name
                         __('Dear Customer,
 
-Your quote request for %s (Quantity: %d) has been %s.
+Your quote request for %1$s (Quantity: %2$d) has been %3$s.
 
 Quote Details:
-- Product: %s
-- Quantity: %d
-- Your Message: %s
-- Status: %s
+- Product: %4$s
+- Quantity: %5$d
+- Your Message: %6$s
+- Status: %7$s
 
-%s
+%8$s
 
 Best regards,
-%s', 'b2b-commerce'),
+%9$s', 'b2b-commerce'),
                         $product_name,
                         $quote['quantity'],
                         $status,

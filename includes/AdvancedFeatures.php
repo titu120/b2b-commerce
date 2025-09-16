@@ -88,7 +88,8 @@ class AdvancedFeatures {
             $remaining = $limit - $current_balance;
             wc_add_notice(
                 sprintf(
-                    __('Your order exceeds your credit limit. Maximum order amount: %s. Current balance: %s. Remaining credit: %s.', 'b2b-commerce'),
+                    // translators: %1$s is the maximum order amount, %2$s is the current balance, %3$s is the remaining credit
+                    __('Your order exceeds your credit limit. Maximum order amount: %1$s. Current balance: %2$s. Remaining credit: %3$s.', 'b2b-commerce'),
                     wc_price($limit),
                     wc_price($current_balance),
                     wc_price($remaining)
@@ -672,8 +673,10 @@ class AdvancedFeatures {
             $regular_price = get_post_meta($post->ID, '_b2b_' . $role . '_regular_price', true);
             woocommerce_wp_text_input([
                 'id' => '_b2b_' . $role . '_regular_price',
+                // translators: %s is the currency symbol
                 'label' => sprintf(__('Regular Price (%s)', 'b2b-commerce'), get_woocommerce_currency_symbol()),
                 'desc_tip' => true,
+                // translators: %s is the role display name
                 'description' => sprintf(__('Regular price for %s customers', 'b2b-commerce'), $role_display_name),
                 'data_type' => 'price',
                 'value' => $regular_price
@@ -683,8 +686,10 @@ class AdvancedFeatures {
             $sale_price = get_post_meta($post->ID, '_b2b_' . $role . '_sale_price', true);
             woocommerce_wp_text_input([
                 'id' => '_b2b_' . $role . '_sale_price',
+                // translators: %s is the currency symbol
                 'label' => sprintf(__('Sale Price (%s)', 'b2b-commerce'), get_woocommerce_currency_symbol()),
                 'desc_tip' => true,
+                // translators: %s is the role display name
                 'description' => sprintf(__('Sale price for %s customers', 'b2b-commerce'), $role_display_name),
                 'data_type' => 'price',
                 'value' => $sale_price

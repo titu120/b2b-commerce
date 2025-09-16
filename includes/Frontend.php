@@ -282,8 +282,11 @@ class Frontend {
             $order = wc_get_order( $order_id );
             if ( $order && $order->get_user_id() == get_current_user_id() ) {
                 header( 'Content-Type: text/html' );
+                // translators: %s is the order ID number
                 echo '<h2>' . sprintf(__('Invoice for Order #%s', 'b2b-commerce'), $order->get_id()) . '</h2>';
+                // translators: %s is the order date
                 echo '<p>' . sprintf(__('Date: %s', 'b2b-commerce'), esc_html( $order->get_date_created()->date( 'Y-m-d' ) )) . '</p>';
+                // translators: %s is the order total amount
                 echo '<p>' . sprintf(__('Total: %s', 'b2b-commerce'), esc_html( get_woocommerce_currency_symbol() . number_format( $order->get_total(), 2 ) )) . '</p>';
                 echo '<h3>' . __('Items', 'b2b-commerce') . '</h3><ul>';
                 foreach ( $order->get_items() as $item ) {
@@ -360,6 +363,7 @@ class Frontend {
     // B2B Registration form shortcode
     public function registration_form_shortcode() {
         if (is_user_logged_in()) {
+            // translators: %s is the logout link HTML
             return '<p>' . sprintf(__('You are already logged in. %s to register a new account.', 'b2b-commerce'), '<a href="' . wp_logout_url() . '">' . __('Logout', 'b2b-commerce') . '</a>') . '</p>';
         }
 
@@ -463,7 +467,9 @@ class Frontend {
                 <div class="form-group">
                     <label>
                         <input type="checkbox" name="terms_agreement" required>
-                        <?php printf(__('I agree to the %sTerms and Conditions%s and %sPrivacy Policy%s', 'b2b-commerce'), '<a href="#" target="_blank">', '</a>', '<a href="#" target="_blank">', '</a>'); ?>
+                        <?php 
+                        // translators: %1$s is the opening link tag for Terms and Conditions, %2$s is the closing link tag, %3$s is the opening link tag for Privacy Policy, %4$s is the closing link tag
+                        printf(__('I agree to the %1$sTerms and Conditions%2$s and %3$sPrivacy Policy%4$s', 'b2b-commerce'), '<a href="#" target="_blank">', '</a>', '<a href="#" target="_blank">', '</a>'); ?>
                     </label>
                 </div>
                 
@@ -676,6 +682,7 @@ class Frontend {
             ]);
 
             if (is_wp_error($update_result)) {
+                // translators: %s is the error message
                 return '<div class="b2b-message notice-error"><p>' . __('❌', 'b2b-commerce') . ' ' . sprintf(__('Failed to update user profile: %s', 'b2b-commerce'), esc_html($update_result->get_error_message())) . '</p></div>';
             }
             
@@ -690,6 +697,7 @@ class Frontend {
             return '<div class="b2b-message notice-success"><p>' . __('✅', 'b2b-commerce') . ' ' . __('Registration successful! Your account is pending approval. You will receive an email once your account is approved.', 'b2b-commerce') . '</p></div>';
             
         } catch (Exception $e) {
+            // translators: %s is the error message
             return '<div class="b2b-message notice-error"><p>' . __('❌', 'b2b-commerce') . ' ' . sprintf(__('Registration failed: %s', 'b2b-commerce'), esc_html($e->getMessage())) . '</p></div>';
         }
     }

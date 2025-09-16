@@ -88,6 +88,7 @@ class PricingManager {
 
         $exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table));
         if ($exists !== $table) {
+            // translators: %s is the table name that failed to be created
             error_log(sprintf(__('B2B Commerce: Failed to create pricing table: %s', 'b2b-commerce'), $table));
             return false;
         }
@@ -128,6 +129,7 @@ class PricingManager {
         
         
         $count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM %i", $table));
+        // translators: %d is the number of pricing rules in the table
         error_log(sprintf(__('B2B Pricing: Table exists with %d rules', 'b2b-commerce'), $count));
         return true;
     }
@@ -475,14 +477,17 @@ class PricingManager {
                         $processed_products[] = $notice_key;
                         
                         if ($enforce_min_qty && $min_qty_behavior === 'error') {
+                            // translators: %d is the minimum quantity required for wholesale pricing
                             $notices[] = sprintf(__('Minimum quantity for wholesale pricing is %d items.', 'b2b-commerce'), $rule->min_qty);
                         } elseif ($enforce_min_qty && $min_qty_behavior === 'warning') {
+                            // translators: %d is the minimum quantity required for wholesale pricing
                             $notices[] = sprintf(__('Note: Minimum quantity for wholesale pricing is %d items. You may not receive wholesale pricing for quantities below this threshold.', 'b2b-commerce'), $rule->min_qty);
                         }
                         // If behavior is 'ignore', don't add any notice
                     }
                 }
                 if ( $rule->max_qty && $quantity > $rule->max_qty ) {
+                    // translators: %d is the maximum quantity allowed for this product
                     $notices[] = sprintf(__('Maximum quantity for this product is %d items.', 'b2b-commerce'), $rule->max_qty);
                 }
 
@@ -805,7 +810,8 @@ class PricingManager {
         
         $output = '<div class="b2b-geo-pricing">';
         $output .= '<h4>' . __('Regional Pricing', 'b2b-commerce') . '</h4>';
-        $output .= '<p>' . sprintf(__('Price for %s: %s', 'b2b-commerce'), esc_html($user_country), wc_price($rule->price)) . '</p>';
+        // translators: %1$s is the country/region name, %2$s is the formatted price
+        $output .= '<p>' . sprintf(__('Price for %1$s: %2$s', 'b2b-commerce'), esc_html($user_country), wc_price($rule->price)) . '</p>';
         $output .= '</div>';
         
         return $output;
@@ -826,7 +832,9 @@ class PricingManager {
         
         $output = '<div class="b2b-time-pricing">';
         $output .= '<h4>' . __('Limited Time Offer', 'b2b-commerce') . '</h4>';
+        // translators: %s is the formatted special price
         $output .= '<p>' . sprintf(__('Special price: %s', 'b2b-commerce'), wc_price($rule->price)) . '</p>';
+        // translators: %s is the end date for the offer
         $output .= '<p>' . sprintf(__('Valid until: %s', 'b2b-commerce'), esc_html($rule->end_date)) . '</p>';
         $output .= '</div>';
         
@@ -868,9 +876,11 @@ class PricingManager {
         
         $output = '<div class="b2b-quantity-limits">';
         if ($rule->min_qty > 1) {
+            // translators: %s is the minimum quantity required
             $output .= '<p><strong>' . __('Minimum Order:', 'b2b-commerce') . '</strong> ' . sprintf(__('%s units', 'b2b-commerce'), esc_html($rule->min_qty)) . '</p>';
         }
         if ($rule->max_qty > 0) {
+            // translators: %s is the maximum quantity allowed
             $output .= '<p><strong>' . __('Maximum Order:', 'b2b-commerce') . '</strong> ' . sprintf(__('%s units', 'b2b-commerce'), esc_html($rule->max_qty)) . '</p>';
         }
         $output .= '</div>';
