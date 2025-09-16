@@ -19,18 +19,20 @@ foreach ( $options as $opt ) {
 }
 
 // Remove user meta
-global $wpdb;
 $meta_keys = [
     'company_name', 'business_type', 'tax_id', 'b2b_approval_status',
     'b2b_credit_limit', 'b2b_payment_terms', 'b2b_tax_exempt', 'b2b_tax_exempt_number',
 ];
 foreach ( $meta_keys as $key ) {
-    $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->usermeta} WHERE meta_key = %s", $key ) );
+    delete_metadata( 'user', 0, $key, '', true );
 }
 
 // Remove term meta for groups and categories
-$wpdb->query( "DELETE FROM {$wpdb->termmeta} WHERE meta_key IN ('b2b_cat_roles','b2b_cat_groups')" );
+delete_metadata( 'term', 0, 'b2b_cat_roles', '', true );
+delete_metadata( 'term', 0, 'b2b_cat_groups', '', true );
 
 // Drop custom pricing rules table
+global $wpdb;
 $table = $wpdb->prefix . 'b2b_pricing_rules';
-$wpdb->query( "DROP TABLE IF EXISTS $table" ); 
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.SchemaChange
+$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" ); 

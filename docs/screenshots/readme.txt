@@ -1,1 +1,0 @@
-Place all plugin screenshots here for documentation and user manual. 

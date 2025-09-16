@@ -1,8 +1,0 @@
-B2B Commerce - Changelog
-===========================
-
-Version 1.0.0 - Initial release
-- All core B2B and wholesale features
-- Advanced user, pricing, and product management
-- Admin and frontend dashboards
-- REST API and integrations 

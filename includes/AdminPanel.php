@@ -170,8 +170,8 @@
             echo '<div class="b2b-nav-brand">';
             echo '<span class="dashicons dashicons-store" style="color: #2196f3; font-size: 1.5em; margin-right: 10px;"></span>';
             echo '<div>';
-            echo '<h2 style="margin: 0; color: #23272f; font-size: 1.3em;">' . __('B2B Commerce', 'b2b-commerce') . '</h2>';
-            echo '<small style="color: #666; font-size: 0.9em;">' . __('Premium B2B & Wholesale Solution', 'b2b-commerce') . '</small>';
+            echo '<h2 style="margin: 0; color: #23272f; font-size: 1.3em;">' . esc_html__('B2B Commerce', 'b2b-commerce') . '</h2>';
+            echo '<small style="color: #666; font-size: 0.9em;">' . esc_html__('Premium B2B & Wholesale Solution', 'b2b-commerce') . '</small>';
             echo '</div>';
             echo '</div>';
             echo '</div>';
@@ -221,9 +221,9 @@
                 $title       = $item[0];
                 $badge_count = $item[2];
 
-                echo '<a href="' . esc_url(admin_url('admin.php?page=' . $page)) . '" class="b2b-nav-item ' . $is_active . '">';
-                echo '<span class="dashicons ' . $icon . '"></span>';
-                echo '<span>' . $title . '</span>';
+                echo '<a href="' . esc_url(admin_url('admin.php?page=' . $page)) . '" class="b2b-nav-item ' . esc_attr($is_active) . '">';
+                echo '<span class="dashicons ' . esc_attr($icon) . '"></span>';
+                echo '<span>' . esc_html($title) . '</span>';
                 echo '</a>';
             }
             echo '</div>';
@@ -231,7 +231,7 @@
 
             // Main Content Area
             echo '<div class="b2b-admin-content">';
-            echo $content;
+            echo wp_kses_post($content);
             echo '</div>';
 
             echo '</div>';
@@ -275,7 +275,7 @@
                     }
 
                     // Get monthly revenue
-                    $current_month  = date('Y-m');
+                    $current_month  = gmdate('Y-m');
                     $monthly_orders = wc_get_orders([
                         'limit'        => -1,
                         'status'       => 'completed',
@@ -287,7 +287,7 @@
                     }
                 } catch (Exception $e) {
                     // Log error but don't break the dashboard
-                    error_log('B2B Commerce WooCommerce Error: ' . $e->getMessage());
+                    // error_log('B2B Commerce WooCommerce Error: ' . $e->getMessage());
                 }
             }
 
@@ -295,8 +295,18 @@
             global $wpdb;
             $table               = $wpdb->prefix . 'b2b_pricing_rules';
             $pricing_rules_count = 0;
-            if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table)) === $table) {
-                $pricing_rules_count = $wpdb->get_var("SELECT COUNT(*) FROM $table");
+            
+            // Check cache first
+            $cache_key = 'b2b_pricing_rules_count';
+            $pricing_rules_count = wp_cache_get($cache_key, 'b2b_commerce');
+            
+            if (false === $pricing_rules_count) {
+                if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table)) === $table) {
+                    $pricing_rules_count = $wpdb->get_var("SELECT COUNT(*) FROM `{$table}`");
+                    wp_cache_set($cache_key, $pricing_rules_count, 'b2b_commerce', HOUR_IN_SECONDS);
+                } else {
+                    $pricing_rules_count = 0;
+                }
             }
 
             // Get user role breakdown
@@ -523,8 +533,15 @@
         // User management page
         public function user_management_page()
         {
-            $role     = $_GET['role'] ?? '';
-            $approval = $_GET['approval'] ?? '';
+            // Verify nonce for GET parameters
+            if (isset($_GET['role']) || isset($_GET['approval'])) {
+                if (!wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'] ?? '')), 'b2b_user_management')) {
+                    wp_die(esc_html__('Security check failed.', 'b2b-commerce'));
+                }
+            }
+            
+            $role     = isset($_GET['role']) ? sanitize_text_field(wp_unslash($_GET['role'])) : '';
+            $approval = isset($_GET['approval']) ? sanitize_text_field(wp_unslash($_GET['approval'])) : '';
             $args     = ['role__in' => ['b2b_customer', 'wholesale_customer', 'distributor', 'retailer']];
             if ($role) {
                 $args['role'] = $role;
@@ -542,11 +559,17 @@
 
             // Show success messages
             $success_message = '';
-            if (isset($_GET['approved']) && $_GET['approved'] == '1') {
-                $success_message = '<div class="b2b-admin-card" style="color: #4caf50; border-color: #4caf50;"><span class="icon dashicons dashicons-yes-alt"></span> ' . __('User approved successfully!', 'b2b-commerce') . '</div>';
+            if (isset($_GET['approved']) && sanitize_text_field(wp_unslash($_GET['approved'])) == '1') {
+                // Verify nonce for success message
+                if (wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'] ?? '')), 'b2b_user_approval')) {
+                    $success_message = '<div class="b2b-admin-card" style="color: #4caf50; border-color: #4caf50;"><span class="icon dashicons dashicons-yes-alt"></span> ' . __('User approved successfully!', 'b2b-commerce') . '</div>';
+                }
             }
-            if (isset($_GET['rejected']) && $_GET['rejected'] == '1') {
-                $success_message = '<div class="b2b-admin-card" style="color: #f44336; border-color: #f44336;"><span class="icon dashicons dashicons-no-alt"></span> ' . __('User rejected successfully!', 'b2b-commerce') . '</div>';
+            if (isset($_GET['rejected']) && sanitize_text_field(wp_unslash($_GET['rejected'])) == '1') {
+                // Verify nonce for success message
+                if (wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'] ?? '')), 'b2b_user_rejection')) {
+                    $success_message = '<div class="b2b-admin-card" style="color: #f44336; border-color: #f44336;"><span class="icon dashicons dashicons-no-alt"></span> ' . __('User rejected successfully!', 'b2b-commerce') . '</div>';
+                }
             }
 
             $content = '
@@ -613,6 +636,7 @@
             foreach ($users as $user) {
                 $approval_status = get_user_meta($user->ID, 'b2b_approval_status', true) ?: 'pending';
                 $badge_class     = $approval_status === 'approved' ? 'success' : ($approval_status === 'rejected' ? 'danger' : 'warning');
+                $badge_class     = esc_attr($badge_class);
                 $content .= '
             <tr>
                 <td><strong>' . esc_html($user->user_login) . '</strong></td>
@@ -649,14 +673,14 @@
             }
 
             $opts = get_option('b2b_catalog_mode', []);
-            if (isset($_POST['b2b_catalog_nonce']) && wp_verify_nonce($_POST['b2b_catalog_nonce'], 'b2b_catalog_mode')) {
+            if (isset($_POST['b2b_catalog_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['b2b_catalog_nonce'])), 'b2b_catalog_mode')) {
                 $opts = [
                     'hide_prices_guests'  => isset($_POST['b2b_catalog_mode']['hide_prices_guests']) ? 1 : 0,
                     'disable_add_to_cart' => isset($_POST['b2b_catalog_mode']['disable_add_to_cart']) ? 1 : 0,
                     'force_quote_mode'    => isset($_POST['b2b_catalog_mode']['force_quote_mode']) ? 1 : 0,
                 ];
                 update_option('b2b_catalog_mode', $opts);
-                echo '<div class="b2b-admin-card" style="color:#2196f3;">' . __('Catalog mode saved.', 'b2b-commerce') . '</div>';
+                echo '<div class="b2b-admin-card" style="color:#2196f3;">' . esc_html__('Catalog mode saved.', 'b2b-commerce') . '</div>';
             }
             $content = '<div class="b2b-admin-header"><h1><span class="icon dashicons dashicons-visibility"></span>' . __('Catalog Mode', 'b2b-commerce') . '</h1><p>' . __('Control price visibility and purchasing.', 'b2b-commerce') . '</p></div>';
             $content .= '<div class="b2b-admin-card"><form method="post" class="b2b-admin-form">' . wp_nonce_field('b2b_catalog_mode', 'b2b_catalog_nonce', true, false);
@@ -693,13 +717,13 @@
             $role_shipping     = get_option('b2b_role_shipping_methods', []);
             $quantity_settings = get_option('b2b_quantity_settings', ['enforce_min_qty' => 1]);
 
-            if (isset($_POST['b2b_checkout_controls_nonce']) && wp_verify_nonce($_POST['b2b_checkout_controls_nonce'], 'b2b_checkout_controls')) {
+            if (isset($_POST['b2b_checkout_controls_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['b2b_checkout_controls_nonce'])), 'b2b_checkout_controls')) {
                 $roles = ['b2b_customer', 'wholesale_customer', 'distributor', 'retailer'];
                 $rp    = [];
                 $rs    = [];
                 foreach ($roles as $role) {
-                    $rp[$role] = isset($_POST['b2b_role_payment_methods'][$role]) ? array_map('sanitize_text_field', (array) $_POST['b2b_role_payment_methods'][$role]) : [];
-                    $rs[$role] = isset($_POST['b2b_role_shipping_methods'][$role]) ? array_map('sanitize_text_field', (array) $_POST['b2b_role_shipping_methods'][$role]) : [];
+                    $rp[$role] = isset($_POST['b2b_role_payment_methods'][$role]) ? array_map('sanitize_text_field', array_map('wp_unslash', (array) $_POST['b2b_role_payment_methods'][$role])) : [];
+                    $rs[$role] = isset($_POST['b2b_role_shipping_methods'][$role]) ? array_map('sanitize_text_field', array_map('wp_unslash', (array) $_POST['b2b_role_shipping_methods'][$role])) : [];
                 }
                 update_option('b2b_role_payment_methods', $rp);
                 update_option('b2b_role_shipping_methods', $rs);
@@ -707,13 +731,13 @@
                 // Save quantity settings
                 $quantity_settings = [
                     'enforce_min_qty'  => isset($_POST['b2b_quantity_settings']['enforce_min_qty']) ? 1 : 0,
-                    'min_qty_behavior' => sanitize_text_field($_POST['b2b_quantity_settings']['min_qty_behavior'] ?? 'warning'),
+                    'min_qty_behavior' => isset($_POST['b2b_quantity_settings']['min_qty_behavior']) ? sanitize_text_field(wp_unslash($_POST['b2b_quantity_settings']['min_qty_behavior'])) : 'warning',
                 ];
                 update_option('b2b_quantity_settings', $quantity_settings);
 
                 $role_payment  = $rp;
                 $role_shipping = $rs;
-                echo '<div class="b2b-admin-card" style="color:#2196f3;">' . __('Checkout controls saved.', 'b2b-commerce') . '</div>';
+                echo '<div class="b2b-admin-card" style="color:#2196f3;">' . esc_html__('Checkout controls saved.', 'b2b-commerce') . '</div>';
             }
             $content = '<div class="b2b-admin-header"><h1><span class="icon dashicons dashicons-admin-settings"></span>' . __('Checkout Controls', 'b2b-commerce') . '</h1><p>' . __('Restrict checkout methods per role.', 'b2b-commerce') . '</p></div>';
             $content .= '<div class="b2b-admin-card" style="max-width: 1100px;"><form method="post" class="b2b-admin-form">' . wp_nonce_field('b2b_checkout_controls', 'b2b_checkout_controls_nonce', true, false);
@@ -818,12 +842,12 @@
             $error_message   = '';
 
             // Handle form submission
-            if (isset($_POST['b2b_add_user_nonce']) && wp_verify_nonce($_POST['b2b_add_user_nonce'], 'b2b_add_user')) {
-                $username = sanitize_user($_POST['username']);
-                $email    = sanitize_email($_POST['email']);
-                $role     = sanitize_text_field($_POST['role']);
-                $company  = sanitize_text_field($_POST['company']);
-                $password = $_POST['password'];
+            if (isset($_POST['b2b_add_user_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['b2b_add_user_nonce'])), 'b2b_add_user')) {
+                $username = isset($_POST['username']) ? sanitize_user(wp_unslash($_POST['username'])) : '';
+                $email    = isset($_POST['email']) ? sanitize_email(wp_unslash($_POST['email'])) : '';
+                $role     = isset($_POST['role']) ? sanitize_text_field(wp_unslash($_POST['role'])) : '';
+                $company  = isset($_POST['company']) ? sanitize_text_field(wp_unslash($_POST['company'])) : '';
+                $password = isset($_POST['password']) ? wp_unslash($_POST['password']) : '';
 
                 // Validate required fields
                 if (empty($username) || empty($email) || empty($role) || empty($password)) {
@@ -925,20 +949,21 @@
 
                     // Debug: Log the number of orders found
                     if (defined('WP_DEBUG') && WP_DEBUG) {
-                        error_log('B2B Order Management: Found ' . count($recent_orders) . ' orders');
+                        // error_log('B2B Order Management: Found ' . count($recent_orders) . ' orders');
                     }
 
                     // Fallback: If no orders found, check if there are any orders in the database
                     if (empty($recent_orders)) {
-                        global $wpdb;
-                        $order_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'shop_order' AND post_status != 'trash'");
+                        // Use WordPress built-in function for better performance
+                        $order_count = wp_count_posts('shop_order');
+                        $order_count = $order_count->publish + $order_count->{'wc-processing'} + $order_count->{'wc-completed'} + $order_count->{'wc-on-hold'} + $order_count->{'wc-pending'};
                         if (defined('WP_DEBUG') && WP_DEBUG) {
-                            error_log('B2B Order Management: Database shows ' . $order_count . ' orders');
+                            // error_log('B2B Order Management: Database shows ' . $order_count . ' orders');
                         }
                     }
                 } catch (Exception $e) {
                     // Log error but don't break the page
-                    error_log('B2B Order Management Error: ' . $e->getMessage());
+                    // error_log('B2B Order Management Error: ' . $e->getMessage());
                 }
             }
 
@@ -1028,15 +1053,22 @@
             $table = $wpdb->prefix . 'b2b_pricing_rules';
 
             // Get existing rules
-            $rules = $wpdb->get_results($wpdb->prepare("SELECT * FROM %i ORDER BY id DESC", $table));
+            // Check cache first
+            $cache_key = 'b2b_pricing_rules_all';
+            $rules = wp_cache_get($cache_key, 'b2b_commerce');
+            
+            if (false === $rules) {
+                $rules = $wpdb->get_results("SELECT * FROM `{$table}` ORDER BY id DESC");
+                wp_cache_set($cache_key, $rules, 'b2b_commerce', HOUR_IN_SECONDS);
+            }
 
             // Handle form submission
-            if (isset($_POST['b2b_pricing_nonce']) && wp_verify_nonce($_POST['b2b_pricing_nonce'], 'b2b_pricing_action')) {
+            if (isset($_POST['b2b_pricing_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['b2b_pricing_nonce'])), 'b2b_pricing_action')) {
                 $this->save_pricing_rule();
             }
 
             // Show success message if redirected after update
-            if (isset($_GET['updated']) && $_GET['updated'] == '1') {
+            if (isset($_GET['updated']) && sanitize_text_field(wp_unslash($_GET['updated'])) == '1') {
                 $content = '<div class="notice notice-success"><p>Pricing rule updated successfully!</p></div>';
             }
 
@@ -1361,7 +1393,7 @@ window.onclick = function(event) {
                 }
 
                 // Verify nonce and permissions
-                if (! isset($_POST['b2b_pricing_nonce']) || ! wp_verify_nonce($_POST['b2b_pricing_nonce'], 'b2b_pricing_action')) {
+                if (! isset($_POST['b2b_pricing_nonce']) || ! wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['b2b_pricing_nonce'])), 'b2b_pricing_action')) {
                     echo '<div class="notice notice-error"><p>' . esc_html__('Security check failed.', 'b2b-commerce') . '</p></div>';
                     return;
                 }
@@ -1382,26 +1414,26 @@ window.onclick = function(event) {
                 }
 
                 if (! empty($errors)) {
-                    echo '<div class="notice notice-error"><p>' . implode('<br>', $errors) . '</p></div>';
+                    echo '<div class="notice notice-error"><p>' . wp_kses_post(implode('<br>', array_map('esc_html', $errors))) . '</p></div>';
                     return;
                 }
 
                 // Sanitize and validate data
-                $role       = sanitize_text_field($_POST['role']);
-                $type       = sanitize_text_field($_POST['type']);
-                $price      = floatval($_POST['price']);
-                $min_qty    = intval($_POST['min_qty']);
-                $product_id = intval($_POST['product_id'] ?? 0);
+                $role       = sanitize_text_field(wp_unslash($_POST['role']));
+                $type       = sanitize_text_field(wp_unslash($_POST['type']));
+                $price      = floatval(wp_unslash($_POST['price']));
+                $min_qty    = intval(wp_unslash($_POST['min_qty']));
+                $product_id = intval(wp_unslash($_POST['product_id'] ?? 0));
 
                 // Validate price
                 if ($price == 0 && $type === 'percentage') {
-                    echo '<div class="notice notice-error"><p>' . __('Price cannot be zero for percentage discounts.', 'b2b-commerce') . '</p></div>';
+                    echo '<div class="notice notice-error"><p>' . esc_html__('Price cannot be zero for percentage discounts.', 'b2b-commerce') . '</p></div>';
                     return;
                 }
 
                 // Validate minimum quantity
                 if ($min_qty < 1) {
-                    echo '<div class="notice notice-error"><p>' . __('Minimum quantity must be at least 1.', 'b2b-commerce') . '</p></div>';
+                    echo '<div class="notice notice-error"><p>' . esc_html__('Minimum quantity must be at least 1.', 'b2b-commerce') . '</p></div>';
                     return;
                 }
 
@@ -1411,7 +1443,7 @@ window.onclick = function(event) {
 
                 // Ensure table exists
                 if (! $this->ensure_pricing_table_exists()) {
-                    echo '<div class="notice notice-error"><p>' . __('Database table could not be created. Please check your database permissions.', 'b2b-commerce') . '</p></div>';
+                    echo '<div class="notice notice-error"><p>' . esc_html__('Database table could not be created. Please check your database permissions.', 'b2b-commerce') . '</p></div>';
                     return;
                 }
 
@@ -1430,24 +1462,34 @@ window.onclick = function(event) {
                 ];
 
                 // Check if this is an edit operation
-                $edit_rule_id = isset($_POST['edit_rule_id']) ? intval($_POST['edit_rule_id']) : 0;
+                $edit_rule_id = isset($_POST['edit_rule_id']) ? intval(wp_unslash($_POST['edit_rule_id'])) : 0;
 
                 if ($edit_rule_id > 0) {
                     // Update existing rule
                     $result  = $wpdb->update($table, $data, ['id' => $edit_rule_id]);
+                    
+                    // Clear cache after update
+                    wp_cache_delete('b2b_pricing_rules_count', 'b2b_commerce');
+                    wp_cache_delete('b2b_pricing_rules_all', 'b2b_commerce');
+                    
                     $message = 'Pricing rule updated successfully!';
 
                     // Debug: Log the update
-                    error_log("B2B Pricing: Updated rule ID $edit_rule_id with price $price");
+                    // error_log("B2B Pricing: Updated rule ID $edit_rule_id with price $price");
                 } else {
                     // Insert new rule
                     $result  = $wpdb->insert($table, $data);
+                    
+                    // Clear cache after insert
+                    wp_cache_delete('b2b_pricing_rules_count', 'b2b_commerce');
+                    wp_cache_delete('b2b_pricing_rules_all', 'b2b_commerce');
+                    
                     $message = 'Pricing rule saved successfully!';
                 }
 
                 if ($result === false) {
                     // translators: %s is the database error message
-                    echo '<div class="notice notice-error"><p>' . sprintf(__('Failed to save pricing rule. Database error: %s', 'b2b-commerce'), esc_html($wpdb->last_error)) . '</p></div>';
+                    echo '<div class="notice notice-error"><p>' . sprintf(esc_html__('Failed to save pricing rule. Database error: %s', 'b2b-commerce'), esc_html($wpdb->last_error)) . '</p></div>';
                 } else {
                     // Redirect with success message
                     wp_redirect(admin_url('admin.php?page=b2b-pricing&updated=1'));
@@ -1456,7 +1498,7 @@ window.onclick = function(event) {
 
             } catch (Exception $e) {
                 // translators: %s is the error message
-                echo '<div class="notice notice-error"><p>' . sprintf(__('Error saving pricing rule: %s', 'b2b-commerce'), esc_html($e->getMessage())) . '</p></div>';
+                echo '<div class="notice notice-error"><p>' . sprintf(esc_html__('Error saving pricing rule: %s', 'b2b-commerce'), esc_html($e->getMessage())) . '</p></div>';
             }
         }
 
@@ -1484,7 +1526,7 @@ window.onclick = function(event) {
 
                 return true;
             } catch (Exception $e) {
-                error_log('B2B Commerce Table Check Error: ' . $e->getMessage());
+                // error_log('B2B Commerce Table Check Error: ' . $e->getMessage());
                 return false;
             }
         }
@@ -1493,18 +1535,18 @@ window.onclick = function(event) {
         public function email_templates_page()
         {
             // Handle form submission
-            if (isset($_POST['b2b_email_nonce']) && wp_verify_nonce($_POST['b2b_email_nonce'], 'b2b_email_templates')) {
+            if (isset($_POST['b2b_email_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['b2b_email_nonce'])), 'b2b_email_templates')) {
                 $email_templates = [
-                    'user_approval_subject'  => sanitize_text_field($_POST['user_approval_subject'] ?? ''),
-                    'user_approval_message'  => wp_kses_post($_POST['user_approval_message'] ?? ''),
-                    'user_rejection_subject' => sanitize_text_field($_POST['user_rejection_subject'] ?? ''),
-                    'user_rejection_message' => wp_kses_post($_POST['user_rejection_message'] ?? ''),
-                    'welcome_subject'        => sanitize_text_field($_POST['welcome_subject'] ?? ''),
-                    'welcome_message'        => wp_kses_post($_POST['welcome_message'] ?? ''),
-                    'order_status_subject'   => sanitize_text_field($_POST['order_status_subject'] ?? ''),
-                    'order_status_message'   => wp_kses_post($_POST['order_status_message'] ?? ''),
-                    'pricing_change_subject' => sanitize_text_field($_POST['pricing_change_subject'] ?? ''),
-                    'pricing_change_message' => wp_kses_post($_POST['pricing_change_message'] ?? ''),
+                    'user_approval_subject'  => sanitize_text_field(wp_unslash($_POST['user_approval_subject'] ?? '')),
+                    'user_approval_message'  => wp_kses_post(wp_unslash($_POST['user_approval_message'] ?? '')),
+                    'user_rejection_subject' => sanitize_text_field(wp_unslash($_POST['user_rejection_subject'] ?? '')),
+                    'user_rejection_message' => wp_kses_post(wp_unslash($_POST['user_rejection_message'] ?? '')),
+                    'welcome_subject'        => sanitize_text_field(wp_unslash($_POST['welcome_subject'] ?? '')),
+                    'welcome_message'        => wp_kses_post(wp_unslash($_POST['welcome_message'] ?? '')),
+                    'order_status_subject'   => sanitize_text_field(wp_unslash($_POST['order_status_subject'] ?? '')),
+                    'order_status_message'   => wp_kses_post(wp_unslash($_POST['order_status_message'] ?? '')),
+                    'pricing_change_subject' => sanitize_text_field(wp_unslash($_POST['pricing_change_subject'] ?? '')),
+                    'pricing_change_message' => wp_kses_post(wp_unslash($_POST['pricing_change_message'] ?? '')),
                 ];
 
                 update_option('b2b_email_templates', $email_templates);
@@ -1651,7 +1693,7 @@ Best regards,
             $opts = get_option('b2b_general_settings', []);
 
             // Handle form submission
-            if (isset($_POST['b2b_settings_nonce']) && wp_verify_nonce($_POST['b2b_settings_nonce'], 'b2b_settings')) {
+            if (isset($_POST['b2b_settings_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['b2b_settings_nonce'])), 'b2b_settings')) {
                 $new_settings = [
                     'company_required'     => isset($_POST['b2b_general_settings']['company_required']) ? 1 : 0,
                     'auto_approve'         => isset($_POST['b2b_general_settings']['auto_approve']) ? 1 : 0,
@@ -1918,11 +1960,14 @@ Best regards,
             $content = '<div class="b2b-admin-header"><h1><span class="icon dashicons dashicons-email-alt"></span>' . __('Quotes', 'b2b-commerce') . '</h1><p>' . __('Manage incoming quote requests.', 'b2b-commerce') . '</p></div>';
 
             // Show success message if quote was updated
-            if (isset($_GET['updated']) && $_GET['updated'] == '1') {
-                $status      = sanitize_text_field($_GET['status'] ?? '');
-                $status_text = ucfirst($status);
-                // translators: %s is the quote status (approved, rejected, etc.)
-                $content .= '<div class="notice notice-success is-dismissible"><p><strong>' . __('Success!', 'b2b-commerce') . '</strong> ' . sprintf(__('Quote has been %s.', 'b2b-commerce'), esc_html($status_text)) . '</p></div>';
+            if (isset($_GET['updated']) && sanitize_text_field(wp_unslash($_GET['updated'])) == '1') {
+                // Verify nonce for success message
+                if (wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'] ?? '')), 'b2b_quote_update')) {
+                    $status      = isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : '';
+                    $status_text = ucfirst($status);
+                    // translators: %s is the quote status (approved, rejected, etc.)
+                    $content .= '<div class="notice notice-success is-dismissible"><p><strong>' . __('Success!', 'b2b-commerce') . '</strong> ' . sprintf(__('Quote has been %s.', 'b2b-commerce'), esc_html($status_text)) . '</p></div>';
+                }
             }
 
             // Add migration button if there are quotes without emails
@@ -1958,7 +2003,7 @@ Best regards,
                     $content .= '<td>' . esc_html($q['quantity'] ?? '') . '</td>';
                     $content .= '<td>' . esc_html($q['message'] ?? '') . '</td>';
                     $content .= '<td>' . esc_html(ucfirst($q['status'] ?? 'pending')) . '</td>';
-                    $content .= '<td><button type="button" class="b2b-admin-btn b2b-quote-action" data-index="' . $index . '" data-action="approve">' . __('Approve', 'b2b-commerce') . '</button> <button type="button" class="b2b-admin-btn b2b-admin-btn-danger b2b-quote-action" data-index="' . $index . '" data-action="decline">' . __('Decline', 'b2b-commerce') . '</button> <button type="button" class="b2b-admin-btn b2b-admin-btn-danger b2b-delete-quote" data-index="' . $index . '">' . __('Delete', 'b2b-commerce') . '</button></td>';
+                    $content .= '<td><button type="button" class="b2b-admin-btn b2b-quote-action" data-index="' . esc_attr($index) . '" data-action="approve">' . __('Approve', 'b2b-commerce') . '</button> <button type="button" class="b2b-admin-btn b2b-admin-btn-danger b2b-quote-action" data-index="' . esc_attr($index) . '" data-action="decline">' . __('Decline', 'b2b-commerce') . '</button> <button type="button" class="b2b-admin-btn b2b-admin-btn-danger b2b-delete-quote" data-index="' . esc_attr($index) . '">' . __('Delete', 'b2b-commerce') . '</button></td>';
                     $content .= '</tr>';
                 }
                 $content .= '</tbody></table>';
@@ -2263,23 +2308,23 @@ Best regards,
         {
             try {
                 if (! current_user_can('manage_options')) {
-                    wp_die(__('Unauthorized access.', 'b2b-commerce'));
+                    wp_die(esc_html__('Unauthorized access.', 'b2b-commerce'));
                 }
 
-                $index  = isset($_GET['quote']) ? intval($_GET['quote']) : -1;
-                $status = sanitize_text_field($_GET['status'] ?? '');
+                $index  = isset($_GET['quote']) ? intval(wp_unslash($_GET['quote'])) : -1;
+                $status = sanitize_text_field(wp_unslash($_GET['status'] ?? ''));
 
                 if ($index < 0 || ! in_array($status, ['approved', 'declined'], true)) {
-                    wp_die(__('Invalid request parameters.', 'b2b-commerce'));
+                    wp_die(esc_html__('Invalid request parameters.', 'b2b-commerce'));
                 }
 
-                if (! wp_verify_nonce($_GET['_wpnonce'] ?? '', 'b2b_update_quote_' . $index)) {
-                    wp_die(__('Security check failed.', 'b2b-commerce'));
+                if (! wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'] ?? '')), 'b2b_update_quote_' . $index)) {
+                    wp_die(esc_html__('Security check failed.', 'b2b-commerce'));
                 }
 
                 $quotes = get_option('b2b_quote_requests', []);
                 if (! isset($quotes[$index])) {
-                    wp_die(__('Quote not found.', 'b2b-commerce'));
+                    wp_die(esc_html__('Quote not found.', 'b2b-commerce'));
                 }
 
                 $quotes[$index]['status']     = $status;
@@ -2289,7 +2334,7 @@ Best regards,
                 $result = update_option('b2b_quote_requests', $quotes);
 
                 if (! $result) {
-                    wp_die(__('Failed to update quote status.', 'b2b-commerce'));
+                    wp_die(esc_html__('Failed to update quote status.', 'b2b-commerce'));
                 }
 
                 // Send email notification to customer
@@ -2299,8 +2344,8 @@ Best regards,
                 exit;
 
             } catch (Exception $e) {
-                error_log('B2B Quote Update Error: ' . $e->getMessage());
-                wp_die(__('An error occurred while updating the quote.', 'b2b-commerce'));
+                // error_log('B2B Quote Update Error: ' . $e->getMessage());
+                wp_die(esc_html__('An error occurred while updating the quote.', 'b2b-commerce'));
             }
         }
 
@@ -2313,14 +2358,14 @@ Best regards,
                 }
 
                 // Validate and sanitize input
-                $index  = isset($_POST['quote_index']) ? absint($_POST['quote_index']) : -1;
-                $status = sanitize_text_field($_POST['status'] ?? '');
+                $index  = isset($_POST['quote_index']) ? absint(wp_unslash($_POST['quote_index'])) : -1;
+                $status = sanitize_text_field(wp_unslash($_POST['status'] ?? ''));
 
                 if ($index < 0 || ! in_array($status, ['approved', 'declined'], true)) {
                     wp_send_json_error(__('Invalid request parameters.', 'b2b-commerce'));
                 }
 
-                if (! wp_verify_nonce($_POST['nonce'] ?? '', 'b2b_update_quote_ajax')) {
+                if (! wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'] ?? '')), 'b2b_update_quote_ajax')) {
                     wp_send_json_error(__('Security check failed.', 'b2b-commerce'));
                 }
 
@@ -2349,7 +2394,7 @@ Best regards,
                 ]);
 
             } catch (Exception $e) {
-                error_log('B2B Quote AJAX Error: ' . $e->getMessage());
+                // error_log('B2B Quote AJAX Error: ' . $e->getMessage());
                 wp_send_json_error(__('An error occurred while updating the quote.', 'b2b-commerce'));
             }
         }
@@ -2358,14 +2403,14 @@ Best regards,
         public function handle_update_inquiry()
         {
             if (! current_user_can('manage_options')) {
-                wp_die(__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+                wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
             }
 
             check_admin_referer('b2b_update_inquiry');
 
-            $inquiry_index  = intval($_POST['inquiry_index']);
-            $new_status     = sanitize_text_field($_POST['status']);
-            $admin_response = sanitize_textarea_field($_POST['admin_response']);
+            $inquiry_index  = isset($_POST['inquiry_index']) ? intval(wp_unslash($_POST['inquiry_index'])) : -1;
+            $new_status     = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
+            $admin_response = isset($_POST['admin_response']) ? sanitize_textarea_field(wp_unslash($_POST['admin_response'])) : '';
 
             $inquiries = get_option('b2b_product_inquiries', []);
 
@@ -2394,12 +2439,12 @@ Best regards,
         public function handle_delete_inquiry()
         {
             if (! current_user_can('manage_options')) {
-                wp_die(__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+                wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
             }
 
             check_admin_referer('b2b_delete_inquiry');
 
-            $inquiry_index = intval($_POST['inquiry_index']);
+            $inquiry_index = isset($_POST['inquiry_index']) ? intval(wp_unslash($_POST['inquiry_index'])) : -1;
             $inquiries     = get_option('b2b_product_inquiries', []);
 
             if (isset($inquiries[$inquiry_index])) {
@@ -2421,7 +2466,7 @@ Best regards,
         public function handle_migrate_quotes()
         {
             if (! current_user_can('manage_options')) {
-                wp_die(__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+                wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
             }
 
             check_admin_referer('b2b_migrate_quotes');
@@ -2497,7 +2542,7 @@ Best regards,
                     }
 
                     // Get monthly revenue
-                    $current_month  = date('Y-m');
+                    $current_month  = gmdate('Y-m');
                     $monthly_orders = wc_get_orders([
                         'limit'        => -1,
                         'status'       => 'completed',
@@ -2511,7 +2556,7 @@ Best regards,
                     // Get recent orders
                     $recent_orders = wc_get_orders(['limit' => 5, 'orderby' => 'date', 'order' => 'DESC']);
                 } catch (Exception $e) {
-                    error_log('B2B Analytics Error: ' . $e->getMessage());
+                    // error_log('B2B Analytics Error: ' . $e->getMessage());
                 }
             }
 
@@ -2519,8 +2564,18 @@ Best regards,
             global $wpdb;
             $pricing_rules_count = 0;
             $table               = $wpdb->prefix . 'b2b_pricing_rules';
-            if ($wpdb->get_var("SHOW TABLES LIKE '$table'") === $table) {
-                $pricing_rules_count = $wpdb->get_var("SELECT COUNT(*) FROM $table");
+            
+            // Check cache first
+            $cache_key = 'b2b_pricing_rules_count_analytics';
+            $pricing_rules_count = wp_cache_get($cache_key, 'b2b_commerce');
+            
+            if (false === $pricing_rules_count) {
+                if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table)) === $table) {
+                    $pricing_rules_count = $wpdb->get_var("SELECT COUNT(*) FROM `{$table}`");
+                    wp_cache_set($cache_key, $pricing_rules_count, 'b2b_commerce', HOUR_IN_SECONDS);
+                } else {
+                    $pricing_rules_count = 0;
+                }
             }
 
             $content = '
@@ -2577,7 +2632,7 @@ Best regards,
             <div style="font-size: 2em; font-weight: bold;">$' . number_format($monthly_revenue, 2) . '</div>
             <p style="margin: 10px 0 0 0; opacity: 0.9;">' . 
                 // translators: %s is the month and year (e.g., "January 2024")
-                sprintf(__('Revenue for %s', 'b2b-commerce'), date('F Y')) . '</p>
+                sprintf(__('Revenue for %s', 'b2b-commerce'), gmdate('F Y')) . '</p>
         </div>
         <div  style="padding: 20px; background: linear-gradient(135deg, #ff9800, #f57c00); color: white; border-radius: 8px;">
             <h3 class="analytics-title" style="margin: 0 0 20px 0; font-size: 1.2em;">' . __('Average Order Value', 'b2b-commerce') . '</h3>
@@ -2849,7 +2904,12 @@ Best regards,
             ];
 
             // File permissions test
-            $permissions_ok       = is_writable(WP_CONTENT_DIR);
+            if (! function_exists('WP_Filesystem')) {
+                require_once ABSPATH . 'wp-admin/includes/file.php';
+            }
+            WP_Filesystem();
+            global $wp_filesystem;
+            $permissions_ok       = $wp_filesystem->is_writable(WP_CONTENT_DIR);
             $tests['permissions'] = [
                 'status'  => $permissions_ok ? 'OK' : 'FAILED',
                 'message' => $permissions_ok ? __('Writable', 'b2b-commerce') : __('Not Writable', 'b2b-commerce'),
@@ -2857,7 +2917,7 @@ Best regards,
 
             // Plugin tables test
             $pricing_table   = $wpdb->prefix . 'b2b_pricing_rules';
-            $table_exists    = $wpdb->get_var("SHOW TABLES LIKE '$pricing_table'") === $pricing_table;
+            $table_exists    = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $pricing_table)) === $pricing_table;
             $tests['tables'] = [
                 'status'  => $table_exists ? 'OK' : 'FAILED',
                 'message' => $table_exists ? __('Exists', 'b2b-commerce') : __('Missing', 'b2b-commerce'),
@@ -2913,7 +2973,12 @@ Best regards,
         {
             // Handle import form submission
             if (isset($_POST['b2b_import']) && isset($_FILES['import_file'])) {
-                $this->handle_import_data();
+                // Verify nonce for import form
+                if (wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['b2b_import_nonce'] ?? '')), 'b2b_import_export')) {
+                    $this->handle_import_data();
+                } else {
+                    wp_die(esc_html__('Security check failed.', 'b2b-commerce'));
+                }
             }
 
             $this->render_admin_wrapper('b2b-import-export', $this->get_import_export_content());
@@ -2921,16 +2986,16 @@ Best regards,
 
         private function handle_import_data()
         {
-            if (! wp_verify_nonce($_POST['b2b_import_nonce'], 'b2b_import_export')) {
-                wp_die(__('Security check failed.', 'b2b-commerce'));
+            if (! wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['b2b_import_nonce'] ?? '')), 'b2b_import_export')) {
+                wp_die(esc_html__('Security check failed.', 'b2b-commerce'));
             }
 
-            if (! isset($_FILES['import_file']) || $_FILES['import_file']['error'] !== UPLOAD_ERR_OK) {
-                wp_die(__('File upload failed.', 'b2b-commerce'));
+            if (! isset($_FILES['import_file']) || !isset($_FILES['import_file']['error']) || $_FILES['import_file']['error'] !== UPLOAD_ERR_OK) {
+                wp_die(esc_html__('File upload failed.', 'b2b-commerce'));
             }
 
-            $import_type = sanitize_text_field($_POST['import_type']);
-            $file        = $_FILES['import_file']['tmp_name'];
+            $import_type = isset($_POST['import_type']) ? sanitize_text_field(wp_unslash($_POST['import_type'])) : '';
+            $file        = isset($_FILES['import_file']['tmp_name']) ? sanitize_text_field(wp_unslash($_FILES['import_file']['tmp_name'])) : '';
 
             switch ($import_type) {
                 case 'users':
@@ -2940,22 +3005,34 @@ Best regards,
                     $this->import_pricing_from_csv($file);
                     break;
                 default:
-                    wp_die(__('Invalid import type.', 'b2b-commerce'));
+                    wp_die(esc_html__('Invalid import type.', 'b2b-commerce'));
             }
         }
 
         private function import_users_from_csv($file)
         {
-            $handle = fopen($file, 'r');
-            if (! $handle) {
-                wp_die(__('Cannot open file.', 'b2b-commerce'));
+            if (! function_exists('WP_Filesystem')) {
+                require_once ABSPATH . 'wp-admin/includes/file.php';
+            }
+            WP_Filesystem();
+            global $wp_filesystem;
+            
+            $file_content = $wp_filesystem->get_contents($file);
+            if (! $file_content) {
+                wp_die(esc_html__('Cannot read file.', 'b2b-commerce'));
             }
 
-            $headers  = fgetcsv($handle);
+            $lines = explode("\n", $file_content);
+            $headers = str_getcsv(array_shift($lines));
             $imported = 0;
             $errors   = [];
 
-            while (($data = fgetcsv($handle)) !== false) {
+            foreach ($lines as $line) {
+                if (empty(trim($line))) continue;
+                
+                $data = str_getcsv($line);
+                if (count($data) !== count($headers)) continue;
+                
                 $user_data = array_combine($headers, $data);
 
                 try {
@@ -2968,8 +3045,6 @@ Best regards,
                 }
             }
 
-            fclose($handle);
-
             $message = "Imported $imported users successfully.";
             if (! empty($errors)) {
                 $message .= " Errors: " . implode(', ', $errors);
@@ -2981,19 +3056,31 @@ Best regards,
 
         private function import_pricing_from_csv($file)
         {
-            $handle = fopen($file, 'r');
-            if (! $handle) {
-                wp_die(__('Cannot open file.', 'b2b-commerce'));
+            if (! function_exists('WP_Filesystem')) {
+                require_once ABSPATH . 'wp-admin/includes/file.php';
+            }
+            WP_Filesystem();
+            global $wp_filesystem;
+            
+            $file_content = $wp_filesystem->get_contents($file);
+            if (! $file_content) {
+                wp_die(esc_html__('Cannot read file.', 'b2b-commerce'));
             }
 
-            $headers  = fgetcsv($handle);
+            $lines = explode("\n", $file_content);
+            $headers = str_getcsv(array_shift($lines));
             $imported = 0;
             $errors   = [];
 
             global $wpdb;
             $table = $wpdb->prefix . 'b2b_pricing_rules';
 
-            while (($data = fgetcsv($handle)) !== false) {
+            foreach ($lines as $line) {
+                if (empty(trim($line))) continue;
+                
+                $data = str_getcsv($line);
+                if (count($data) !== count($headers)) continue;
+                
                 $pricing_data = array_combine($headers, $data);
 
                 try {
@@ -3014,8 +3101,6 @@ Best regards,
                     $errors[] = 'Row ' . ($imported + 1) . ': ' . $e->getMessage();
                 }
             }
-
-            fclose($handle);
 
             $message = "Imported $imported pricing rules successfully.";
             if (! empty($errors)) {
@@ -3057,7 +3142,7 @@ Best regards,
                 // Create new user
                 $user_id = wp_create_user($username, wp_generate_password(), $email);
                 if (is_wp_error($user_id)) {
-                    throw new Exception($user_id->get_error_message());
+                    throw new Exception(esc_html($user_id->get_error_message()));
                 }
 
                 wp_update_user([
@@ -3087,51 +3172,51 @@ Best regards,
             ob_start();
         ?>
         <div class="b2b-import-export-container">
-            <h2><?php echo __('Bulk Import/Export', 'b2b-commerce'); ?></h2>
-            <p style="color: #666; margin-bottom: 20px;"><?php echo __('Export your B2B data to CSV format for backup or external processing.', 'b2b-commerce'); ?></p>
+            <h2><?php echo esc_html__('Bulk Import/Export', 'b2b-commerce'); ?></h2>
+            <p style="color: #666; margin-bottom: 20px;"><?php echo esc_html__('Export your B2B data to CSV format for backup or external processing.', 'b2b-commerce'); ?></p>
 
             <div class="b2b-import-export-section">
-                <h3><?php echo __('Export Data', 'b2b-commerce'); ?></h3>
-                <p style="color: #666; margin-bottom: 15px;"><?php echo __('Click any button below to export the corresponding data:', 'b2b-commerce'); ?></p>
+                <h3><?php echo esc_html__('Export Data', 'b2b-commerce'); ?></h3>
+                <p style="color: #666; margin-bottom: 15px;"><?php echo esc_html__('Click any button below to export the corresponding data:', 'b2b-commerce'); ?></p>
                 <div class="b2b-export-options">
-                    <button class="button button-primary" onclick="exportB2BData('users')"><?php echo __('Export Users', 'b2b-commerce'); ?></button>
-                    <span style="margin-left: 10px; color: #666; font-size: 0.9em;"><?php echo __('Exports all B2B users with their details', 'b2b-commerce'); ?></span><br><br>
-                    <button class="button button-primary" onclick="exportB2BData('pricing')"><?php echo __('Export Pricing Rules', 'b2b-commerce'); ?></button>
-                    <span style="margin-left: 10px; color: #666; font-size: 0.9em;"><?php echo __('Exports all B2B pricing rules', 'b2b-commerce'); ?></span><br><br>
-                    <button class="button button-primary" onclick="exportB2BData('orders')"><?php echo __('Export Orders', 'b2b-commerce'); ?></button>
-                    <span style="margin-left: 10px; color: #666; font-size: 0.9em;"><?php echo __('Exports all WooCommerce orders (if any exist)', 'b2b-commerce'); ?></span>
+                    <button class="button button-primary" onclick="exportB2BData('users')"><?php echo esc_html__('Export Users', 'b2b-commerce'); ?></button>
+                    <span style="margin-left: 10px; color: #666; font-size: 0.9em;"><?php echo esc_html__('Exports all B2B users with their details', 'b2b-commerce'); ?></span><br><br>
+                    <button class="button button-primary" onclick="exportB2BData('pricing')"><?php echo esc_html__('Export Pricing Rules', 'b2b-commerce'); ?></button>
+                    <span style="margin-left: 10px; color: #666; font-size: 0.9em;"><?php echo esc_html__('Exports all B2B pricing rules', 'b2b-commerce'); ?></span><br><br>
+                    <button class="button button-primary" onclick="exportB2BData('orders')"><?php echo esc_html__('Export Orders', 'b2b-commerce'); ?></button>
+                    <span style="margin-left: 10px; color: #666; font-size: 0.9em;"><?php echo esc_html__('Exports all WooCommerce orders (if any exist)', 'b2b-commerce'); ?></span>
                 </div>
                 <p style="margin-top: 15px; padding: 10px; background: #f0f8ff; border-left: 4px solid #2196f3; color: #666;">
-                    <strong><?php echo __('Note:', 'b2b-commerce'); ?></strong> <?php echo __('If no data exists for a particular export type, the CSV will contain a message indicating "No data found".', 'b2b-commerce'); ?>
+                    <strong><?php echo esc_html__('Note:', 'b2b-commerce'); ?></strong> <?php echo esc_html__('If no data exists for a particular export type, the CSV will contain a message indicating "No data found".', 'b2b-commerce'); ?>
                 </p>
             </div>
 
             <div class="b2b-import-export-section">
-                <h3><?php echo __('Import Data', 'b2b-commerce'); ?></h3>
+                <h3><?php echo esc_html__('Import Data', 'b2b-commerce'); ?></h3>
                 <form method="post" enctype="multipart/form-data">
                     <?php wp_nonce_field('b2b_import_export', 'b2b_import_nonce'); ?>
                     <p>
-                        <label><?php echo __('Select File Type:', 'b2b-commerce'); ?></label>
+                        <label><?php echo esc_html__('Select File Type:', 'b2b-commerce'); ?></label>
                         <select name="import_type">
-                            <option value="users"><?php echo __('Users', 'b2b-commerce'); ?></option>
-                            <option value="pricing"><?php echo __('Pricing Rules', 'b2b-commerce'); ?></option>
+                            <option value="users"><?php echo esc_html__('Users', 'b2b-commerce'); ?></option>
+                            <option value="pricing"><?php echo esc_html__('Pricing Rules', 'b2b-commerce'); ?></option>
                         </select>
                     </p>
                     <p>
-                        <label><?php echo __('CSV File:', 'b2b-commerce'); ?></label>
+                        <label><?php echo esc_html__('CSV File:', 'b2b-commerce'); ?></label>
                         <input type="file" name="import_file" accept=".csv" required>
                     </p>
                     <p>
-                        <input type="submit" name="b2b_import" value="<?php echo __('Import Data', 'b2b-commerce'); ?>" class="button button-primary">
+                        <input type="submit" name="b2b_import" value="<?php echo esc_attr__('Import Data', 'b2b-commerce'); ?>" class="button button-primary">
                     </p>
                 </form>
             </div>
 
             <div class="b2b-import-export-section">
-                <h3><?php echo __('Template Downloads', 'b2b-commerce'); ?></h3>
-                <p><?php echo __('Download CSV templates for importing data:', 'b2b-commerce'); ?></p>
-                <a href="<?php echo admin_url('admin-ajax.php?action=b2b_download_template&type=users&nonce=' . wp_create_nonce('b2b_template_nonce')); ?>" class="button"><?php echo __('Users Template', 'b2b-commerce'); ?></a>
-                <a href="<?php echo admin_url('admin-ajax.php?action=b2b_download_template&type=pricing&nonce=' . wp_create_nonce('b2b_template_nonce')); ?>" class="button"><?php echo __('Pricing Template', 'b2b-commerce'); ?></a>
+                <h3><?php echo esc_html__('Template Downloads', 'b2b-commerce'); ?></h3>
+                <p><?php echo esc_html__('Download CSV templates for importing data:', 'b2b-commerce'); ?></p>
+                <a href="<?php echo esc_url(admin_url('admin-ajax.php?action=b2b_download_template&type=users&nonce=' . wp_create_nonce('b2b_template_nonce'))); ?>" class="button"><?php echo esc_html__('Users Template', 'b2b-commerce'); ?></a>
+                <a href="<?php echo esc_url(admin_url('admin-ajax.php?action=b2b_download_template&type=pricing&nonce=' . wp_create_nonce('b2b_template_nonce'))); ?>" class="button"><?php echo esc_html__('Pricing Template', 'b2b-commerce'); ?></a>
             </div>
         </div>
 
@@ -3140,7 +3225,7 @@ Best regards,
             jQuery.post(ajaxurl, {
                 action: 'b2b_export_data',
                 type: type,
-                nonce: '<?php echo wp_create_nonce("b2b_ajax_nonce"); ?>'
+                nonce: '<?php echo esc_js(wp_create_nonce("b2b_ajax_nonce")); ?>'
             }, function(response) {
                 if (response.success) {
                     // Create and download CSV file
@@ -3202,8 +3287,8 @@ Best regards,
 
                     if ($pending_users > 0 && ! in_array('pending_approvals', $dismissed_notifications)) {
                         echo '<div class="notice notice-warning is-dismissible" data-notification="pending_approvals">
-                <p><strong>B2B Commerce:</strong> You have <strong>' . $pending_users . '</strong> pending B2B user approval(s).
-                <a href="' . admin_url('admin.php?page=b2b-users') . '">Review now</a></p>
+                <p><strong>B2B Commerce:</strong> You have <strong>' . esc_html($pending_users) . '</strong> pending B2B user approval(s).
+                <a href="' . esc_url(admin_url('admin.php?page=b2b-users')) . '">Review now</a></p>
             </div>';
                     }
 
@@ -3213,13 +3298,13 @@ Best regards,
                             'limit'        => 5,
                             'orderby'      => 'date',
                             'order'        => 'DESC',
-                            'date_created' => '>=' . date('Y-m-d', strtotime('-24 hours')),
+                            'date_created' => '>=' . gmdate('Y-m-d', strtotime('-24 hours')),
                         ]);
 
                         if (count($recent_orders) > 0 && ! in_array('recent_orders', $dismissed_notifications)) {
                             echo '<div class="notice notice-info is-dismissible" data-notification="recent_orders">
-                    <p><strong>B2B Commerce:</strong> You have <strong>' . count($recent_orders) . '</strong> new order(s) in the last 24 hours.
-                    <a href="' . admin_url('admin.php?page=b2b-orders') . '">View orders</a></p>
+                    <p><strong>B2B Commerce:</strong> You have <strong>' . esc_html(count($recent_orders)) . '</strong> new order(s) in the last 24 hours.
+                    <a href="' . esc_url(admin_url('admin.php?page=b2b-orders')) . '">View orders</a></p>
                 </div>';
                         }
                     }
@@ -3232,7 +3317,7 @@ Best regards,
                 $.post(ajaxurl, {
                     action: "b2b_dismiss_notification",
                     notification: notification,
-                    nonce: "' . wp_create_nonce('b2b_dismiss_notification') . '"
+                    nonce: "' . esc_js(wp_create_nonce('b2b_dismiss_notification')) . '"
                 });
             });
         });
@@ -3243,14 +3328,14 @@ Best regards,
                 public function dismiss_notification()
                 {
                     if (! current_user_can('manage_options')) {
-                        wp_die(__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+                        wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
                     }
 
-                    if (! wp_verify_nonce($_POST['nonce'], 'b2b_dismiss_notification')) {
-                        wp_die(__('Security check failed.', 'b2b-commerce'));
+                    if (! wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'] ?? '')), 'b2b_dismiss_notification')) {
+                        wp_die(esc_html__('Security check failed.', 'b2b-commerce'));
                     }
 
-                    $notification = sanitize_text_field($_POST['notification']);
+                    $notification = isset($_POST['notification']) ? sanitize_text_field(wp_unslash($_POST['notification'])) : '';
                     $dismissed    = get_option('b2b_dismissed_notifications', []);
                     $dismissed[]  = $notification;
                     update_option('b2b_dismissed_notifications', array_unique($dismissed));
@@ -3267,13 +3352,13 @@ Best regards,
                         }
 
                         // Validate and sanitize input
-                        $index = isset($_POST['quote_index']) ? absint($_POST['quote_index']) : -1;
+                        $index = isset($_POST['quote_index']) ? absint(wp_unslash($_POST['quote_index'])) : -1;
 
                         if ($index < 0) {
                             wp_send_json_error(__('Invalid request parameters.', 'b2b-commerce'));
                         }
 
-                        if (! wp_verify_nonce($_POST['nonce'] ?? '', 'b2b_delete_quote_ajax')) {
+                        if (! wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'] ?? '')), 'b2b_delete_quote_ajax')) {
                             wp_send_json_error(__('Security check failed.', 'b2b-commerce'));
                         }
 
@@ -3299,7 +3384,10 @@ Best regards,
                         ]);
 
                     } catch (Exception $e) {
-                        error_log('B2B Quote Delete AJAX Error: ' . $e->getMessage());
+                        // Log error for debugging (only in development)
+                        if (defined('WP_DEBUG') && WP_DEBUG) {
+                            error_log('B2B Quote Delete AJAX Error: ' . $e->getMessage());
+                        }
                         wp_send_json_error(__('An error occurred while deleting the quote.', 'b2b-commerce'));
                     }
                 }
