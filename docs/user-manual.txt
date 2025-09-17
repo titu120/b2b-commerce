@@ -1,0 +1,18 @@
+B2B Commerce - User Manual
+=============================
+
+Welcome to B2B Commerce!
+
+Features:
+- Advanced user management
+- Sophisticated pricing
+- Product control
+- Admin and frontend dashboards
+
+Usage:
+1. Go to B2B Commerce > Settings to configure options.
+2. Use the User Management tab to add or approve users.
+3. Set pricing rules in the Pricing tab.
+4. Manage products and orders from the dashboard.
+
+For screenshots, see the /docs/screenshots/ folder. 
