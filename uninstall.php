@@ -33,4 +33,4 @@ $wpdb->query( $wpdb->prepare("DELETE FROM {$wpdb->termmeta} WHERE meta_key IN (%
 
 // Drop custom pricing rules table
 $table = $wpdb->prefix . 'b2b_pricing_rules';
-$wpdb->query( $wpdb->prepare("DROP TABLE IF EXISTS %i", $table) ); 
+$wpdb->query("DROP TABLE IF EXISTS `" . $wpdb->_escape($table) . "`"); 

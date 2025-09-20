@@ -9,17 +9,21 @@ class Reporting {
         add_action( 'wp_ajax_b2b_get_user_analytics', [ $this, 'get_user_analytics' ] );
         add_action( 'wp_ajax_b2b_get_performance_metrics', [ $this, 'get_performance_metrics' ] );
         add_action( 'wp_ajax_b2b_export_report', [ $this, 'export_report' ] );
+        
+        // Add admin-post handler for report generation
+        add_action( 'admin_post_b2b_generate_report', [ $this, 'handle_report_generation' ] );
     }
 
     // AJAX handler for user analytics
     public function get_user_analytics() {
-        // Security checks
+        // Security checks - check permissions first
         if (!current_user_can('manage_options')) {
             wp_send_json_error(__('Unauthorized access', 'b2b-commerce'));
             return;
         }
         
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'b2b_analytics_nonce')) {
+        // Verify nonce with unique action name
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'b2b_get_user_analytics_nonce')) {
             wp_send_json_error(__('Security check failed', 'b2b-commerce'));
             return;
         }
@@ -36,13 +40,14 @@ class Reporting {
 
     // AJAX handler for performance metrics
     public function get_performance_metrics() {
-        // Security checks
+        // Security checks - check permissions first
         if (!current_user_can('manage_options')) {
             wp_send_json_error(__('Unauthorized access', 'b2b-commerce'));
             return;
         }
         
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'b2b_analytics_nonce')) {
+        // Verify nonce with unique action name
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'b2b_get_performance_metrics_nonce')) {
             wp_send_json_error(__('Security check failed', 'b2b-commerce'));
             return;
         }
@@ -59,20 +64,24 @@ class Reporting {
 
     // AJAX handler for report export
     public function export_report() {
-        // Security checks
+        // Security checks - check permissions first
         if (!current_user_can('manage_options')) {
             wp_send_json_error(__('Unauthorized access', 'b2b-commerce'));
             return;
         }
         
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'b2b_analytics_nonce')) {
+        // Verify nonce with unique action name
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'b2b_export_report_nonce')) {
             wp_send_json_error(__('Security check failed', 'b2b-commerce'));
             return;
         }
         
+        // Sanitize and validate input
         $report_type = sanitize_text_field($_POST['report_type'] ?? '');
         
-        if (empty($report_type)) {
+        // Validate report type against allowed values
+        $allowed_report_types = ['sales_summary', 'customer_analysis', 'product_performance', 'revenue_analysis'];
+        if (empty($report_type) || !in_array($report_type, $allowed_report_types)) {
             wp_send_json_error(__('Invalid report type', 'b2b-commerce'));
             return;
         }
@@ -81,10 +90,72 @@ class Reporting {
         wp_send_json_success(['message' => __('Report generated successfully', 'b2b-commerce')]);
     }
 
+    // Admin-post handler for report generation
+    public function handle_report_generation() {
+        // Security checks - check permissions first
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to perform this action.', 'b2b-commerce'));
+        }
+        
+        // Verify nonce
+        if (!isset($_POST['b2b_report_nonce']) || !wp_verify_nonce($_POST['b2b_report_nonce'], 'b2b_generate_report')) {
+            wp_die(__('Security check failed. Please try again.', 'b2b-commerce'));
+        }
+        
+        // Sanitize and validate inputs
+        $report_type = sanitize_text_field($_POST['report_type'] ?? '');
+        $date_range = sanitize_text_field($_POST['date_range'] ?? '');
+        $format = sanitize_text_field($_POST['format'] ?? '');
+        
+        // Validate report type
+        $allowed_report_types = ['sales_summary', 'customer_analysis', 'product_performance', 'revenue_analysis'];
+        if (empty($report_type) || !in_array($report_type, $allowed_report_types)) {
+            wp_die(__('Invalid report type selected.', 'b2b-commerce'));
+        }
+        
+        // Validate date range
+        $allowed_date_ranges = ['7', '30', '90', '365'];
+        if (empty($date_range) || !in_array($date_range, $allowed_date_ranges)) {
+            wp_die(__('Invalid date range selected.', 'b2b-commerce'));
+        }
+        
+        // Validate format
+        $allowed_formats = ['csv', 'pdf', 'excel'];
+        if (empty($format) || !in_array($format, $allowed_formats)) {
+            wp_die(__('Invalid format selected.', 'b2b-commerce'));
+        }
+        
+        // Process the report generation
+        $this->generate_report_file($report_type, $date_range, $format);
+    }
     
+    private function generate_report_file($report_type, $date_range, $format) {
+        // This is a placeholder - in a real implementation, you would generate the actual report file
+        // and provide it for download
+        
+        // For now, just redirect back with a success message
+        $redirect_url = add_query_arg([
+            'page' => 'b2b-analytics',
+            'tab' => 'reports',
+            'report_generated' => '1'
+        ], admin_url('admin.php'));
+        
+        wp_redirect($redirect_url);
+        exit;
+    }
 
     public function analytics_page() {
-        $tab = $_GET['tab'] ?? 'dashboard';
+        // Security check - ensure user has proper permissions
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+        }
+        
+        // Sanitize and validate tab parameter
+        $tab = sanitize_text_field($_GET['tab'] ?? 'dashboard');
+        $allowed_tabs = ['dashboard', 'sales', 'users', 'performance', 'reports'];
+        if (!in_array($tab, $allowed_tabs)) {
+            $tab = 'dashboard';
+        }
         
         echo '<div class="b2b-admin-header">';
         echo '<h1><span class="icon dashicons dashicons-chart-line"></span>' . esc_html__('B2B Analytics & Reports', 'b2b-commerce') . '</h1>';
@@ -93,11 +164,11 @@ class Reporting {
         
         echo '<div class="b2b-admin-card">';
         echo '<nav class="nav-tab-wrapper">';
-        echo '<a href="' . esc_url( admin_url('admin.php?page=b2b-analytics&tab=dashboard') ) . '" class="nav-tab' . ($tab === 'dashboard' ? ' nav-tab-active' : '') . '">' . esc_html__('Dashboard', 'b2b-commerce') . '</a>';
-        echo '<a href="' . esc_url( admin_url('admin.php?page=b2b-analytics&tab=sales') ) . '" class="nav-tab' . ($tab === 'sales' ? ' nav-tab-active' : '') . '">' . esc_html__('Sales Analytics', 'b2b-commerce') . '</a>';
-        echo '<a href="' . esc_url( admin_url('admin.php?page=b2b-analytics&tab=users') ) . '" class="nav-tab' . ($tab === 'users' ? ' nav-tab-active' : '') . '">' . esc_html__('User Analytics', 'b2b-commerce') . '</a>';
-        echo '<a href="' . esc_url( admin_url('admin.php?page=b2b-analytics&tab=performance') ) . '" class="nav-tab' . ($tab === 'performance' ? ' nav-tab-active' : '') . '">' . esc_html__('Performance', 'b2b-commerce') . '</a>';
-        echo '<a href="' . esc_url( admin_url('admin.php?page=b2b-analytics&tab=reports') ) . '" class="nav-tab' . ($tab === 'reports' ? ' nav-tab-active' : '') . '">' . esc_html__('Reports', 'b2b-commerce') . '</a>';
+        echo '<a href="' . esc_url( admin_url('admin.php?page=b2b-analytics&tab=dashboard') ) . '" class="nav-tab' . (esc_attr($tab) === 'dashboard' ? ' nav-tab-active' : '') . '">' . esc_html__('Dashboard', 'b2b-commerce') . '</a>';
+        echo '<a href="' . esc_url( admin_url('admin.php?page=b2b-analytics&tab=sales') ) . '" class="nav-tab' . (esc_attr($tab) === 'sales' ? ' nav-tab-active' : '') . '">' . esc_html__('Sales Analytics', 'b2b-commerce') . '</a>';
+        echo '<a href="' . esc_url( admin_url('admin.php?page=b2b-analytics&tab=users') ) . '" class="nav-tab' . (esc_attr($tab) === 'users' ? ' nav-tab-active' : '') . '">' . esc_html__('User Analytics', 'b2b-commerce') . '</a>';
+        echo '<a href="' . esc_url( admin_url('admin.php?page=b2b-analytics&tab=performance') ) . '" class="nav-tab' . (esc_attr($tab) === 'performance' ? ' nav-tab-active' : '') . '">' . esc_html__('Performance', 'b2b-commerce') . '</a>';
+        echo '<a href="' . esc_url( admin_url('admin.php?page=b2b-analytics&tab=reports') ) . '" class="nav-tab' . (esc_attr($tab) === 'reports' ? ' nav-tab-active' : '') . '">' . esc_html__('Reports', 'b2b-commerce') . '</a>';
         echo '</nav>';
         
         switch ($tab) {
@@ -132,23 +203,23 @@ class Reporting {
         $avg_order_value = $this->get_average_order_value();
         
         echo '<div class="stat-card">';
-        echo '<h3>' . __('Total Revenue', 'b2b-commerce') . '</h3>';
-        echo '<p class="stat-value">' . wc_price($total_revenue) . '</p>';
+        echo '<h3>' . esc_html__('Total Revenue', 'b2b-commerce') . '</h3>';
+        echo '<p class="stat-value">' . wp_kses_post(wc_price($total_revenue)) . '</p>';
         echo '</div>';
         
         echo '<div class="stat-card">';
-        echo '<h3>' . __('Total Orders', 'b2b-commerce') . '</h3>';
-        echo '<p class="stat-value">' . number_format($total_orders) . '</p>';
+        echo '<h3>' . esc_html__('Total Orders', 'b2b-commerce') . '</h3>';
+        echo '<p class="stat-value">' . esc_html(number_format($total_orders)) . '</p>';
         echo '</div>';
         
         echo '<div class="stat-card">';
-        echo '<h3>' . __('Active Users', 'b2b-commerce') . '</h3>';
-        echo '<p class="stat-value">' . number_format($active_users) . '</p>';
+        echo '<h3>' . esc_html__('Active Users', 'b2b-commerce') . '</h3>';
+        echo '<p class="stat-value">' . esc_html(number_format($active_users)) . '</p>';
         echo '</div>';
         
         echo '<div class="stat-card">';
-        echo '<h3>' . __('Avg Order Value', 'b2b-commerce') . '</h3>';
-        echo '<p class="stat-value">' . wc_price($avg_order_value) . '</p>';
+        echo '<h3>' . esc_html__('Avg Order Value', 'b2b-commerce') . '</h3>';
+        echo '<p class="stat-value">' . wp_kses_post(wc_price($avg_order_value)) . '</p>';
         echo '</div>';
         
         echo '</div>';
@@ -169,9 +240,9 @@ class Reporting {
             new Chart(revenueCtx, {
                 type: "line",
                 data: {
-                    labels: ["' . __('Jan', 'b2b-commerce') . '", "' . __('Feb', 'b2b-commerce') . '", "' . __('Mar', 'b2b-commerce') . '", "' . __('Apr', 'b2b-commerce') . '", "' . __('May', 'b2b-commerce') . '", "' . __('Jun', 'b2b-commerce') . '"],
+                    labels: ["' . esc_js(__('Jan', 'b2b-commerce')) . '", "' . esc_js(__('Feb', 'b2b-commerce')) . '", "' . esc_js(__('Mar', 'b2b-commerce')) . '", "' . esc_js(__('Apr', 'b2b-commerce')) . '", "' . esc_js(__('May', 'b2b-commerce')) . '", "' . esc_js(__('Jun', 'b2b-commerce')) . '"],
                     datasets: [{
-                        label: "' . __('Revenue', 'b2b-commerce') . '",
+                        label: "' . esc_js(__('Revenue', 'b2b-commerce')) . '",
                         data: [12000, 19000, 15000, 25000, 22000, 30000],
                         borderColor: "rgb(75, 192, 192)",
                         tension: 0.1
@@ -184,9 +255,9 @@ class Reporting {
             new Chart(ordersCtx, {
                 type: "bar",
                 data: {
-                    labels: ["' . __('Jan', 'b2b-commerce') . '", "' . __('Feb', 'b2b-commerce') . '", "' . __('Mar', 'b2b-commerce') . '", "' . __('Apr', 'b2b-commerce') . '", "' . __('May', 'b2b-commerce') . '", "' . __('Jun', 'b2b-commerce') . '"],
+                    labels: ["' . esc_js(__('Jan', 'b2b-commerce')) . '", "' . esc_js(__('Feb', 'b2b-commerce')) . '", "' . esc_js(__('Mar', 'b2b-commerce')) . '", "' . esc_js(__('Apr', 'b2b-commerce')) . '", "' . esc_js(__('May', 'b2b-commerce')) . '", "' . esc_js(__('Jun', 'b2b-commerce')) . '"],
                     datasets: [{
-                        label: "' . __('Orders', 'b2b-commerce') . '",
+                        label: "' . esc_js(__('Orders', 'b2b-commerce')) . '",
                         data: [65, 59, 80, 81, 56, 55],
                         backgroundColor: "rgba(54, 162, 235, 0.2)",
                         borderColor: "rgb(54, 162, 235)",
@@ -200,34 +271,34 @@ class Reporting {
 
     private function sales_analytics_tab() {
         echo '<div class="b2b-sales-analytics">';
-        echo '<h2>' . __('Sales Analytics', 'b2b-commerce') . '</h2>';
+        echo '<h2>' . esc_html__('Sales Analytics', 'b2b-commerce') . '</h2>';
         
         // Date range selector
         echo '<div class="date-range-selector">';
-        echo '<label>' . __('Date Range:', 'b2b-commerce') . ' </label>';
+        echo '<label>' . esc_html__('Date Range:', 'b2b-commerce') . ' </label>';
         echo '<select id="date-range">';
-        echo '<option value="7">' . __('Last 7 days', 'b2b-commerce') . '</option>';
-        echo '<option value="30" selected>' . __('Last 30 days', 'b2b-commerce') . '</option>';
-        echo '<option value="90">' . __('Last 90 days', 'b2b-commerce') . '</option>';
-        echo '<option value="365">' . __('Last year', 'b2b-commerce') . '</option>';
+        echo '<option value="7">' . esc_html__('Last 7 days', 'b2b-commerce') . '</option>';
+        echo '<option value="30" selected>' . esc_html__('Last 30 days', 'b2b-commerce') . '</option>';
+        echo '<option value="90">' . esc_html__('Last 90 days', 'b2b-commerce') . '</option>';
+        echo '<option value="365">' . esc_html__('Last year', 'b2b-commerce') . '</option>';
         echo '</select>';
-        echo '<button onclick="updateSalesData()" class="button">' . __('Update', 'b2b-commerce') . '</button>';
+        echo '<button onclick="updateSalesData()" class="button">' . esc_html__('Update', 'b2b-commerce') . '</button>';
         echo '</div>';
         
         // Sales metrics
         echo '<div class="sales-metrics">';
         echo '<div class="metric-card">';
-        echo '<h3>' . __('Revenue by Customer Type', 'b2b-commerce') . '</h3>';
+        echo '<h3>' . esc_html__('Revenue by Customer Type', 'b2b-commerce') . '</h3>';
         echo '<div id="revenue-by-type"></div>';
         echo '</div>';
         
         echo '<div class="metric-card">';
-        echo '<h3>' . __('Top Products', 'b2b-commerce') . '</h3>';
+        echo '<h3>' . esc_html__('Top Products', 'b2b-commerce') . '</h3>';
         echo '<div id="top-products"></div>';
         echo '</div>';
         
         echo '<div class="metric-card">';
-        echo '<h3>' . __('Sales Trend', 'b2b-commerce') . '</h3>';
+        echo '<h3>' . esc_html__('Sales Trend', 'b2b-commerce') . '</h3>';
         echo '<div id="sales-trend"></div>';
         echo '</div>';
         echo '</div>';
@@ -237,7 +308,7 @@ class Reporting {
 
     private function user_analytics_tab() {
         echo '<div class="b2b-user-analytics">';
-        echo '<h2>' . __('User Analytics', 'b2b-commerce') . '</h2>';
+        echo '<h2>' . esc_html__('User Analytics', 'b2b-commerce') . '</h2>';
         
         // User statistics
         $total_users = $this->get_total_users();
@@ -247,29 +318,29 @@ class Reporting {
         
         echo '<div class="user-stats">';
         echo '<div class="stat-item">';
-        echo '<h3>' . __('Total Users', 'b2b-commerce') . '</h3>';
-        echo '<p>' . number_format($total_users) . '</p>';
+        echo '<h3>' . esc_html__('Total Users', 'b2b-commerce') . '</h3>';
+        echo '<p>' . esc_html(number_format($total_users)) . '</p>';
         echo '</div>';
         
         echo '<div class="stat-item">';
-        echo '<h3>' . __('New Users (This Month)', 'b2b-commerce') . '</h3>';
-        echo '<p>' . number_format($new_users_this_month) . '</p>';
+        echo '<h3>' . esc_html__('New Users (This Month)', 'b2b-commerce') . '</h3>';
+        echo '<p>' . esc_html(number_format($new_users_this_month)) . '</p>';
         echo '</div>';
         
         echo '<div class="stat-item">';
-        echo '<h3>' . __('Active Users (This Month)', 'b2b-commerce') . '</h3>';
-        echo '<p>' . number_format($active_users_this_month) . '</p>';
+        echo '<h3>' . esc_html__('Active Users (This Month)', 'b2b-commerce') . '</h3>';
+        echo '<p>' . esc_html(number_format($active_users_this_month)) . '</p>';
         echo '</div>';
         
         echo '<div class="stat-item">';
-        echo '<h3>' . __('Conversion Rate', 'b2b-commerce') . '</h3>';
-        echo '<p>' . number_format($conversion_rate, 1) . '%</p>';
+        echo '<h3>' . esc_html__('Conversion Rate', 'b2b-commerce') . '</h3>';
+        echo '<p>' . esc_html(number_format($conversion_rate, 1)) . '%</p>';
         echo '</div>';
         echo '</div>';
         
         // User activity chart
         echo '<div class="user-activity-chart">';
-        echo '<h3>' . __('User Activity Over Time', 'b2b-commerce') . '</h3>';
+        echo '<h3>' . esc_html__('User Activity Over Time', 'b2b-commerce') . '</h3>';
         echo '<div id="user-activity-chart"></div>';
         echo '</div>';
         
@@ -278,7 +349,7 @@ class Reporting {
 
     private function performance_tab() {
         echo '<div class="b2b-performance">';
-        echo '<h2>' . __('Performance Metrics', 'b2b-commerce') . '</h2>';
+        echo '<h2>' . esc_html__('Performance Metrics', 'b2b-commerce') . '</h2>';
         
         // Performance metrics
         $avg_response_time = $this->get_average_response_time();
@@ -288,23 +359,23 @@ class Reporting {
         
         echo '<div class="performance-metrics">';
         echo '<div class="metric-item">';
-        echo '<h3>' . __('Avg Response Time', 'b2b-commerce') . '</h3>';
-        echo '<p>' . $avg_response_time . ' ' . __('hours', 'b2b-commerce') . '</p>';
+        echo '<h3>' . esc_html__('Avg Response Time', 'b2b-commerce') . '</h3>';
+        echo '<p>' . esc_html($avg_response_time) . ' ' . esc_html__('hours', 'b2b-commerce') . '</p>';
         echo '</div>';
         
         echo '<div class="metric-item">';
-        echo '<h3>' . __('Order Fulfillment Rate', 'b2b-commerce') . '</h3>';
-        echo '<p>' . number_format($order_fulfillment_rate, 1) . '%</p>';
+        echo '<h3>' . esc_html__('Order Fulfillment Rate', 'b2b-commerce') . '</h3>';
+        echo '<p>' . esc_html(number_format($order_fulfillment_rate, 1)) . '%</p>';
         echo '</div>';
         
         echo '<div class="metric-item">';
-        echo '<h3>' . __('Customer Satisfaction', 'b2b-commerce') . '</h3>';
-        echo '<p>' . number_format($customer_satisfaction, 1) . '/5</p>';
+        echo '<h3>' . esc_html__('Customer Satisfaction', 'b2b-commerce') . '</h3>';
+        echo '<p>' . esc_html(number_format($customer_satisfaction, 1)) . '/5</p>';
         echo '</div>';
         
         echo '<div class="metric-item">';
-        echo '<h3>' . __('Repeat Customer Rate', 'b2b-commerce') . '</h3>';
-        echo '<p>' . number_format($repeat_customer_rate, 1) . '%</p>';
+        echo '<h3>' . esc_html__('Repeat Customer Rate', 'b2b-commerce') . '</h3>';
+        echo '<p>' . esc_html(number_format($repeat_customer_rate, 1)) . '%</p>';
         echo '</div>';
         echo '</div>';
         
@@ -313,40 +384,46 @@ class Reporting {
 
     private function reports_tab() {
         echo '<div class="b2b-reports">';
-        echo '<h2>' . __('Reports', 'b2b-commerce') . '</h2>';
+        echo '<h2>' . esc_html__('Reports', 'b2b-commerce') . '</h2>';
+        
+        // Show success message if report was generated
+        $report_generated = sanitize_text_field($_GET['report_generated'] ?? '');
+        if ($report_generated === '1') {
+            echo '<div class="notice notice-success"><p>' . esc_html__('Report generated successfully!', 'b2b-commerce') . '</p></div>';
+        }
         
         echo '<div class="report-options">';
-        echo '<h3>' . __('Generate Reports', 'b2b-commerce') . '</h3>';
+        echo '<h3>' . esc_html__('Generate Reports', 'b2b-commerce') . '</h3>';
         
-        echo '<form method="post" action="' . admin_url('admin-post.php') . '">';
+        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
         echo '<input type="hidden" name="action" value="b2b_generate_report">';
         echo wp_nonce_field('b2b_generate_report', 'b2b_report_nonce', true, false);
         
-        echo '<p><label>' . __('Report Type:', 'b2b-commerce') . ' </label>';
+        echo '<p><label>' . esc_html__('Report Type:', 'b2b-commerce') . ' </label>';
         echo '<select name="report_type" required>';
-        echo '<option value="">' . __('Select Report', 'b2b-commerce') . '</option>';
-        echo '<option value="sales_summary">' . __('Sales Summary', 'b2b-commerce') . '</option>';
-        echo '<option value="customer_analysis">' . __('Customer Analysis', 'b2b-commerce') . '</option>';
-        echo '<option value="product_performance">' . __('Product Performance', 'b2b-commerce') . '</option>';
-        echo '<option value="revenue_analysis">' . __('Revenue Analysis', 'b2b-commerce') . '</option>';
+        echo '<option value="">' . esc_html__('Select Report', 'b2b-commerce') . '</option>';
+        echo '<option value="sales_summary">' . esc_html__('Sales Summary', 'b2b-commerce') . '</option>';
+        echo '<option value="customer_analysis">' . esc_html__('Customer Analysis', 'b2b-commerce') . '</option>';
+        echo '<option value="product_performance">' . esc_html__('Product Performance', 'b2b-commerce') . '</option>';
+        echo '<option value="revenue_analysis">' . esc_html__('Revenue Analysis', 'b2b-commerce') . '</option>';
         echo '</select></p>';
         
-        echo '<p><label>' . __('Date Range:', 'b2b-commerce') . ' </label>';
+        echo '<p><label>' . esc_html__('Date Range:', 'b2b-commerce') . ' </label>';
         echo '<select name="date_range" required>';
-        echo '<option value="7">' . __('Last 7 days', 'b2b-commerce') . '</option>';
-        echo '<option value="30">' . __('Last 30 days', 'b2b-commerce') . '</option>';
-        echo '<option value="90">' . __('Last 90 days', 'b2b-commerce') . '</option>';
-        echo '<option value="365">' . __('Last year', 'b2b-commerce') . '</option>';
+        echo '<option value="7">' . esc_html__('Last 7 days', 'b2b-commerce') . '</option>';
+        echo '<option value="30">' . esc_html__('Last 30 days', 'b2b-commerce') . '</option>';
+        echo '<option value="90">' . esc_html__('Last 90 days', 'b2b-commerce') . '</option>';
+        echo '<option value="365">' . esc_html__('Last year', 'b2b-commerce') . '</option>';
         echo '</select></p>';
         
-        echo '<p><label>' . __('Format:', 'b2b-commerce') . ' </label>';
+        echo '<p><label>' . esc_html__('Format:', 'b2b-commerce') . ' </label>';
         echo '<select name="format" required>';
-        echo '<option value="csv">' . __('CSV', 'b2b-commerce') . '</option>';
-        echo '<option value="pdf">' . __('PDF', 'b2b-commerce') . '</option>';
-        echo '<option value="excel">' . __('Excel', 'b2b-commerce') . '</option>';
+        echo '<option value="csv">' . esc_html__('CSV', 'b2b-commerce') . '</option>';
+        echo '<option value="pdf">' . esc_html__('PDF', 'b2b-commerce') . '</option>';
+        echo '<option value="excel">' . esc_html__('Excel', 'b2b-commerce') . '</option>';
         echo '</select></p>';
         
-        echo '<p><button type="submit" class="button button-primary">' . __('Generate Report', 'b2b-commerce') . '</button></p>';
+        echo '<p><button type="submit" class="button button-primary">' . esc_html__('Generate Report', 'b2b-commerce') . '</button></p>';
         echo '</form>';
         echo '</div>';
         

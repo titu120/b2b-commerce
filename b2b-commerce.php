@@ -17,11 +17,130 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+// Prevent direct access to sensitive functions
+if ( ! function_exists( 'b2b_prevent_direct_access' ) ) {
+    function b2b_prevent_direct_access() {
+        if ( ! defined( 'ABSPATH' ) || ! current_user_can( 'manage_options' ) ) {
+            wp_die( __( 'Access denied. This function requires administrator privileges.', 'b2b-commerce' ) );
+        }
+    }
+}
+
 // Define plugin constant
 define( 'B2B_COMMERCE_VERSION', '1.0.0' );
 define( 'B2B_COMMERCE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'B2B_COMMERCE_URL', plugin_dir_url( __FILE__ ) );
 define( 'B2B_COMMERCE_BASENAME', plugin_basename( __FILE__ ) );
+
+/**
+ * Security helper function to validate nonce and user permissions
+ * 
+ * @param string $nonce_name The nonce name to verify
+ * @param string $capability The capability required (default: 'manage_options')
+ * @param string $method The HTTP method to check (POST, GET, REQUEST)
+ * @return bool|WP_Error True if valid, WP_Error if invalid
+ */
+function b2b_validate_security($nonce_name, $capability = 'manage_options', $method = 'POST') {
+    // Check user permissions first
+    if (!current_user_can($capability)) {
+        return new WP_Error('unauthorized', __('You do not have sufficient permissions to perform this action.', 'b2b-commerce'));
+    }
+    
+    // Get the appropriate superglobal based on method
+    $data = null;
+    switch (strtoupper($method)) {
+        case 'GET':
+            $data = $_GET;
+            break;
+        case 'POST':
+            $data = $_POST;
+            break;
+        case 'REQUEST':
+            $data = $_REQUEST;
+            break;
+        default:
+            return new WP_Error('invalid_method', __('Invalid HTTP method specified.', 'b2b-commerce'));
+    }
+    
+    // Verify nonce
+    if (!isset($data['nonce']) || !wp_verify_nonce($data['nonce'], $nonce_name)) {
+        return new WP_Error('nonce_failed', __('Security check failed. Please refresh the page and try again.', 'b2b-commerce'));
+    }
+    
+    return true;
+}
+
+/**
+ * Rate limiting helper function to prevent abuse
+ * 
+ * @param string $action The action being performed
+ * @param int $limit Number of attempts allowed
+ * @param int $window Time window in seconds
+ * @return bool|WP_Error True if allowed, WP_Error if rate limited
+ */
+function b2b_check_rate_limit($action, $limit = 10, $window = 300) {
+    $user_id = get_current_user_id();
+    $ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field($_SERVER['REMOTE_ADDR']) : 'unknown';
+    $key = 'b2b_rate_limit_' . $action . '_' . $user_id . '_' . $ip;
+    
+    $attempts = get_transient($key);
+    if ($attempts === false) {
+        set_transient($key, 1, $window);
+        return true;
+    }
+    
+    if ($attempts >= $limit) {
+        return new WP_Error('rate_limited', __('Too many attempts. Please try again later.', 'b2b-commerce'));
+    }
+    
+    set_transient($key, $attempts + 1, $window);
+    return true;
+}
+
+/**
+ * Enhanced security validation for frontend actions
+ * 
+ * @param string $nonce_name The nonce name to verify
+ * @param string $action The action being performed (for rate limiting)
+ * @return bool|WP_Error True if valid, WP_Error if invalid
+ */
+function b2b_validate_frontend_security($nonce_name, $action = 'general') {
+    // Check rate limiting first
+    $rate_check = b2b_check_rate_limit($action, 5, 300); // 5 attempts per 5 minutes
+    if (is_wp_error($rate_check)) {
+        return $rate_check;
+    }
+    
+    // Verify nonce
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], $nonce_name)) {
+        return new WP_Error('nonce_failed', __('Security check failed. Please refresh the page and try again.', 'b2b-commerce'));
+    }
+    
+    return true;
+}
+
+/**
+ * Sanitize and validate input data
+ * 
+ * @param mixed $data The data to sanitize
+ * @param string $type The type of sanitization (text, email, int, float, url)
+ * @return mixed Sanitized data
+ */
+function b2b_sanitize_input($data, $type = 'text') {
+    switch ($type) {
+        case 'email':
+            return sanitize_email($data);
+        case 'int':
+            return intval($data);
+        case 'float':
+            return floatval($data);
+        case 'url':
+            return esc_url_raw($data);
+        case 'text':
+        default:
+            return sanitize_text_field($data);
+    }
+}
 
 function autoload_b2b_commerce() {
     spl_autoload_register( function ( $class ) {
@@ -240,22 +359,24 @@ register_deactivation_hook( __FILE__, function() {
 // AJAX handlers for B2B Commerce with comprehensive error handling
 add_action('wp_ajax_b2b_approve_user', function() {
     try {
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(__('Unauthorized access', 'b2b-commerce'));
+        // Use centralized security validation
+        $security_check = b2b_validate_security('b2b_approve_user_nonce', 'manage_options', 'POST');
+        if (is_wp_error($security_check)) {
+            wp_send_json_error($security_check->get_error_message());
             return;
         }
         
-        if (!isset($_POST['user_id']) || !isset($_POST['nonce'])) {
+        // Validate required parameters
+        if (!isset($_POST['user_id']) || empty($_POST['user_id'])) {
             wp_send_json_error(__('Missing required parameters', 'b2b-commerce'));
             return;
         }
         
-        $user_id = intval($_POST['user_id']);
-        $nonce = $_POST['nonce'] ?? '';
+        $user_id = b2b_sanitize_input($_POST['user_id'], 'int');
         
-        // Use specific nonce for each user to prevent CSRF attacks
-        if (!wp_verify_nonce($nonce, 'b2b_approve_user_' . $user_id)) {
-            wp_send_json_error(__('Security check failed', 'b2b-commerce'));
+        // Additional validation for user_id
+        if ($user_id <= 0) {
+            wp_send_json_error(__('Invalid user ID', 'b2b-commerce'));
             return;
         }
         
@@ -276,9 +397,9 @@ add_action('wp_ajax_b2b_approve_user', function() {
         
         // Replace variables
         $subject = str_replace(['{user_name}', '{login_url}', '{site_name}'], 
-            [$user->display_name, wp_login_url(), get_bloginfo('name')], $subject);
+            [esc_html($user->display_name), esc_url(wp_login_url()), esc_html(get_bloginfo('name'))], $subject);
         $message = str_replace(['{user_name}', '{login_url}', '{site_name}'], 
-            [$user->display_name, wp_login_url(), get_bloginfo('name')], $message);
+            [esc_html($user->display_name), esc_url(wp_login_url()), esc_html(get_bloginfo('name'))], $message);
         
         $headers = array('Content-Type: text/html; charset=UTF-8');
         
@@ -287,28 +408,30 @@ add_action('wp_ajax_b2b_approve_user', function() {
         wp_send_json_success(__('User approved successfully', 'b2b-commerce'));
         
     } catch (Exception $e) {
-        wp_send_json_error(__('Error: ', 'b2b-commerce') . $e->getMessage());
+        wp_send_json_error(__('Error: ', 'b2b-commerce') . esc_html($e->getMessage()));
     }
 });
 
 add_action('wp_ajax_b2b_reject_user', function() {
     try {
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(__('Unauthorized access', 'b2b-commerce'));
+        // Use centralized security validation
+        $security_check = b2b_validate_security('b2b_reject_user_nonce', 'manage_options', 'POST');
+        if (is_wp_error($security_check)) {
+            wp_send_json_error($security_check->get_error_message());
             return;
         }
         
-        if (!isset($_POST['user_id']) || !isset($_POST['nonce'])) {
+        // Validate required parameters
+        if (!isset($_POST['user_id']) || empty($_POST['user_id'])) {
             wp_send_json_error(__('Missing required parameters', 'b2b-commerce'));
             return;
         }
         
-        $user_id = intval($_POST['user_id']);
-        $nonce = $_POST['nonce'] ?? '';
+        $user_id = b2b_sanitize_input($_POST['user_id'], 'int');
         
-        // Use specific nonce for each user to prevent CSRF attacks
-        if (!wp_verify_nonce($nonce, 'b2b_reject_user_' . $user_id)) {
-            wp_send_json_error(__('Security check failed', 'b2b-commerce'));
+        // Additional validation for user_id
+        if ($user_id <= 0) {
+            wp_send_json_error(__('Invalid user ID', 'b2b-commerce'));
             return;
         }
         
@@ -329,9 +452,9 @@ add_action('wp_ajax_b2b_reject_user', function() {
         
         // Replace variables
         $subject = str_replace(['{user_name}', '{site_name}'], 
-            [$user->display_name, get_bloginfo('name')], $subject);
+            [esc_html($user->display_name), esc_html(get_bloginfo('name'))], $subject);
         $message = str_replace(['{user_name}', '{site_name}'], 
-            [$user->display_name, get_bloginfo('name')], $message);
+            [esc_html($user->display_name), esc_html(get_bloginfo('name'))], $message);
         
         $headers = array('Content-Type: text/html; charset=UTF-8');
         
@@ -340,22 +463,16 @@ add_action('wp_ajax_b2b_reject_user', function() {
         wp_send_json_success(__('User rejected successfully', 'b2b-commerce'));
         
     } catch (Exception $e) {
-        wp_send_json_error(__('Error: ', 'b2b-commerce') . $e->getMessage());
+        wp_send_json_error(__('Error: ', 'b2b-commerce') . esc_html($e->getMessage()));
     }
 });
 
 add_action('wp_ajax_b2b_save_pricing_rule', function() {
     try {
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(__('Unauthorized access', 'b2b-commerce'));
-            return;
-        }
-        // Verify nonce (supports both form and AJAX usage)
-        $form_nonce = $_POST['b2b_pricing_nonce'] ?? '';
-        $ajax_nonce = $_POST['nonce'] ?? '';
-        // Use specific nonce for pricing actions to prevent CSRF attacks
-        if (!$ajax_nonce || !wp_verify_nonce($ajax_nonce, 'b2b_pricing_nonce')) {
-            wp_send_json_error(__('Security check failed', 'b2b-commerce'));
+        // Use centralized security validation
+        $security_check = b2b_validate_security('b2b_pricing_nonce', 'manage_options', 'POST');
+        if (is_wp_error($security_check)) {
+            wp_send_json_error($security_check->get_error_message());
             return;
         }
 
@@ -390,42 +507,38 @@ add_action('wp_ajax_b2b_save_pricing_rule', function() {
         
         $data = array(
             'product_id' => 0,
-            'role' => sanitize_text_field($_POST['role']),
+            'role' => b2b_sanitize_input($_POST['role'], 'text'),
             'user_id' => 0,
             'group_id' => 0,
             'geo_zone' => '',
             'start_date' => '',
             'end_date' => '',
-            'min_qty' => intval($_POST['min_qty']),
+            'min_qty' => b2b_sanitize_input($_POST['min_qty'], 'int'),
             'max_qty' => 0,
-            'price' => floatval($_POST['price']),
-            'type' => sanitize_text_field($_POST['type'])
+            'price' => b2b_sanitize_input($_POST['price'], 'float'),
+            'type' => b2b_sanitize_input($_POST['type'], 'text')
         );
         
         $result = $wpdb->insert($table, $data);
         
         if ($result === false) {
             // translators: %s is the database error message
-            wp_send_json_error(sprintf(__('Database error: %s', 'b2b-commerce'), $wpdb->last_error));
+            wp_send_json_error(sprintf(__('Database error: %s', 'b2b-commerce'), esc_html($wpdb->last_error)));
         } else {
             wp_send_json_success(__('Pricing rule saved successfully', 'b2b-commerce'));
         }
         
     } catch (Exception $e) {
-        wp_send_json_error(__('Error: ', 'b2b-commerce') . $e->getMessage());
+        wp_send_json_error(__('Error: ', 'b2b-commerce') . esc_html($e->getMessage()));
     }
 });
 
 add_action('wp_ajax_b2b_delete_pricing_rule', function() {
     try {
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(__('Unauthorized access', 'b2b-commerce'));
-            return;
-        }
-        // Verify nonce
-        $nonce = $_POST['nonce'] ?? '';
-        if (!$nonce || !wp_verify_nonce($nonce, 'b2b_pricing_nonce')) {
-            wp_send_json_error(__('Security check failed', 'b2b-commerce'));
+        // Use centralized security validation
+        $security_check = b2b_validate_security('b2b_pricing_nonce', 'manage_options', 'POST');
+        if (is_wp_error($security_check)) {
+            wp_send_json_error($security_check->get_error_message());
             return;
         }
 
@@ -436,33 +549,37 @@ add_action('wp_ajax_b2b_delete_pricing_rule', function() {
         
         global $wpdb;
         $table = $wpdb->prefix . 'b2b_pricing_rules';
-        $rule_id = intval($_POST['rule_id']);
+        $rule_id = b2b_sanitize_input($_POST['rule_id'], 'int');
         
         $result = $wpdb->delete($table, array('id' => $rule_id), array('%d'));
         
         if ($result === false) {
             // translators: %s is the database error message
-            wp_send_json_error(sprintf(__('Database error: %s', 'b2b-commerce'), $wpdb->last_error));
+            wp_send_json_error(sprintf(__('Database error: %s', 'b2b-commerce'), esc_html($wpdb->last_error)));
         } else {
             wp_send_json_success(__('Pricing rule deleted successfully', 'b2b-commerce'));
         }
         
     } catch (Exception $e) {
-        wp_send_json_error(__('Error: ', 'b2b-commerce') . $e->getMessage());
+        wp_send_json_error(__('Error: ', 'b2b-commerce') . esc_html($e->getMessage()));
     }
 });
 
 add_action('wp_ajax_b2b_export_data', function() {
-    if (!current_user_can('manage_options')) {
-        wp_die(__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+    // Use centralized security validation
+    $security_check = b2b_validate_security('b2b_ajax_nonce', 'manage_options', 'POST');
+    if (is_wp_error($security_check)) {
+        wp_send_json_error($security_check->get_error_message());
+        return;
     }
     
-    $type = sanitize_text_field($_POST['type']);
-    $nonce = $_POST['nonce'];
-    
-    if (!wp_verify_nonce($nonce, 'b2b_ajax_nonce')) {
-        wp_send_json_error(__('Security check failed', 'b2b-commerce'));
+    // Validate and sanitize input
+    if (!isset($_POST['type']) || empty($_POST['type'])) {
+        wp_send_json_error(__('Missing export type', 'b2b-commerce'));
+        return;
     }
+    
+    $type = b2b_sanitize_input($_POST['type'], 'text');
     
     switch ($type) {
         case 'users':
@@ -475,11 +592,11 @@ add_action('wp_ajax_b2b_export_data', function() {
                 foreach ($users as $user) {
                     $csv_data .= sprintf(
                         "%s,%s,%s,%s,%s\n",
-                        $user->user_login,
-                        $user->user_email,
-                        implode(',', $user->roles),
-                        get_user_meta($user->ID, 'company_name', true),
-                        get_user_meta($user->ID, 'b2b_approval_status', true) ?: 'pending'
+                        esc_html($user->user_login),
+                        esc_html($user->user_email),
+                        esc_html(implode(',', $user->roles)),
+                        esc_html(get_user_meta($user->ID, 'company_name', true)),
+                        esc_html(get_user_meta($user->ID, 'b2b_approval_status', true) ?: 'pending')
                     );
                 }
             }
@@ -488,7 +605,13 @@ add_action('wp_ajax_b2b_export_data', function() {
         case 'pricing':
             global $wpdb;
             $table = $wpdb->prefix . 'b2b_pricing_rules';
-            $rules = $wpdb->get_results($wpdb->prepare("SELECT * FROM %i", $table));
+            // Validate table name exists before querying
+            $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table));
+            if ($table_exists !== $table) {
+                wp_send_json_error(__('Pricing table not found', 'b2b-commerce'));
+                return;
+            }
+            $rules = $wpdb->get_results("SELECT * FROM `{$table}`");
             $csv_data = __("Customer Type,Pricing Type,Value,Min Quantity", 'b2b-commerce') . "\n";
             
             if (empty($rules)) {
@@ -497,10 +620,10 @@ add_action('wp_ajax_b2b_export_data', function() {
                 foreach ($rules as $rule) {
                     $csv_data .= sprintf(
                         "%s,%s,%s,%s\n",
-                        $rule->role,
-                        $rule->type,
-                        $rule->price,
-                        $rule->min_qty
+                        esc_html($rule->role),
+                        esc_html($rule->type),
+                        esc_html($rule->price),
+                        esc_html($rule->min_qty)
                     );
                 }
             }
@@ -524,12 +647,12 @@ add_action('wp_ajax_b2b_export_data', function() {
                     
                     $csv_data .= sprintf(
                         "%s,%s,%s,%s,%s,%s\n",
-                        $order->get_id(),
-                        $order->get_date_created()->date('Y-m-d H:i:s'),
-                        $order->get_status(),
-                        $customer_name,
-                        $order->get_total(),
-                        $order->get_payment_method_title()
+                        esc_html($order->get_id()),
+                        esc_html($order->get_date_created()->date('Y-m-d H:i:s')),
+                        esc_html($order->get_status()),
+                        esc_html($customer_name),
+                        esc_html($order->get_total()),
+                        esc_html($order->get_payment_method_title())
                     );
                 }
             }
@@ -544,25 +667,33 @@ add_action('wp_ajax_b2b_export_data', function() {
 
 // Import/Export AJAX handlers
 add_action('wp_ajax_b2b_download_template', function() {
-    if (!current_user_can('manage_options')) {
-        wp_die(__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+    // Use centralized security validation for GET requests
+    $security_check = b2b_validate_security('b2b_template_nonce', 'manage_options', 'GET');
+    if (is_wp_error($security_check)) {
+        wp_die($security_check->get_error_message());
     }
     
-    $type = sanitize_text_field($_GET['type']);
-    $nonce = $_GET['nonce'];
+    // Validate and sanitize input
+    if (!isset($_GET['type']) || empty($_GET['type'])) {
+        wp_die(__('Missing template type.', 'b2b-commerce'));
+    }
     
-    if (!wp_verify_nonce($nonce, 'b2b_template_nonce')) {
-        wp_die(__('Security check failed.', 'b2b-commerce'));
+    $type = b2b_sanitize_input($_GET['type'], 'text');
+    
+    // Validate type parameter
+    $allowed_types = ['users', 'pricing'];
+    if (!in_array($type, $allowed_types)) {
+        wp_die(__('Invalid template type.', 'b2b-commerce'));
     }
     
     switch ($type) {
         case 'users':
-            $csv_data = __("Username,Email,First Name,Last Name,Company Name,Business Type,Phone,Role,Approval Status", 'b2b-commerce') . "\n";
+            $csv_data = esc_html__("Username,Email,First Name,Last Name,Company Name,Business Type,Phone,Role,Approval Status", 'b2b-commerce') . "\n";
             $csv_data .= "john_doe,john@example.com,John,Doe,ABC Company,Retail,555-0123,wholesale_customer,approved\n";
             break;
             
         case 'pricing':
-            $csv_data = __("Role,Type,Price,Min Quantity,Max Quantity,Product ID", 'b2b-commerce') . "\n";
+            $csv_data = esc_html__("Role,Type,Price,Min Quantity,Max Quantity,Product ID", 'b2b-commerce') . "\n";
             $csv_data .= "wholesale_customer,percentage,10,10,0,0\n";
             $csv_data .= "distributor,fixed,5,50,0,0\n";
             break;
@@ -573,19 +704,16 @@ add_action('wp_ajax_b2b_download_template', function() {
     
     header('Content-Type: text/csv');
     header('Content-Disposition: attachment; filename="b2b_' . esc_attr($type) . '_template.csv"');
-    echo esc_html($csv_data);
+    echo $csv_data;
     exit;
 });
 
 // Demo data import handler
 add_action('wp_ajax_b2b_import_demo_data', function() {
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error(__('Unauthorized', 'b2b-commerce'));
-        return;
-    }
-    
-    if (!wp_verify_nonce($_POST['nonce'], 'b2b_import_demo')) {
-        wp_send_json_error(__('Security check failed', 'b2b-commerce'));
+    // Use centralized security validation
+    $security_check = b2b_validate_security('b2b_import_demo', 'manage_options', 'POST');
+    if (is_wp_error($security_check)) {
+        wp_send_json_error($security_check->get_error_message());
         return;
     }
     
@@ -688,14 +816,29 @@ add_action('wp_ajax_b2b_import_demo_data', function() {
         
     } catch (Exception $e) {
         // translators: %s is the error message
-        wp_send_json_error(sprintf(__('Error importing demo data: %s', 'b2b-commerce'), $e->getMessage()));
+        wp_send_json_error(sprintf(__('Error importing demo data: %s', 'b2b-commerce'), esc_html($e->getMessage())));
     }
 });
 
 // Enqueue modern admin CSS and JS for all B2B Commerce admin pages
 add_action('admin_enqueue_scripts', function($hook) {
-    if (isset($_GET['page']) && strpos($_GET['page'], 'b2b-') === 0) {
-        wp_enqueue_style(
+    // Security check: only load on B2B admin pages
+    if (!isset($_GET['page']) || strpos(sanitize_text_field($_GET['page']), 'b2b-') !== 0) {
+        return;
+    }
+    
+    // Additional security: validate page parameter
+    $page = sanitize_text_field($_GET['page']);
+    if (empty($page) || !preg_match('/^[a-zA-Z0-9_-]+$/', $page)) {
+        return;
+    }
+    
+    // Additional security: verify user has proper permissions
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+    
+    wp_enqueue_style(
             'b2b-admin-standalone-demo',
             B2B_COMMERCE_URL . 'assets/css/b2b-admin-standalone-demo.css',
             [],
@@ -712,35 +855,161 @@ add_action('admin_enqueue_scripts', function($hook) {
         
         // Localize script for AJAX with proper nonce and translated strings
         wp_localize_script('b2b-commerce-admin', 'b2b_ajax', array(
-            'ajaxurl' => admin_url('admin-ajax.php'),
+            'ajaxurl' => esc_url(admin_url('admin-ajax.php')),
             'nonce' => wp_create_nonce('b2b_ajax_nonce'),
             'approve_nonce' => wp_create_nonce('b2b_approve_user_nonce'),
             'reject_nonce' => wp_create_nonce('b2b_reject_user_nonce'),
             'pricing_nonce' => wp_create_nonce('b2b_pricing_nonce'),
+            'template_nonce' => wp_create_nonce('b2b_template_nonce'),
+            'import_demo_nonce' => wp_create_nonce('b2b_import_demo'),
             'strings' => array(
-                'confirm_approve_user' => __('Are you sure you want to approve this user?', 'b2b-commerce'),
-                'confirm_reject_user' => __('Are you sure you want to reject this user?', 'b2b-commerce'),
-                'confirm_delete_pricing' => __('Are you sure you want to delete this pricing rule?', 'b2b-commerce'),
-                'apply' => __('Apply', 'b2b-commerce'),
-                'search' => __('Search:', 'b2b-commerce'),
-                'show_entries' => __('Show _MENU_ entries', 'b2b-commerce'),
-                'showing_entries' => __('Showing _START_ to _END_ of _TOTAL_ entries', 'b2b-commerce'),
-                'showing_empty' => __('Showing 0 to 0 of 0 entries', 'b2b-commerce'),
-                'filtered_entries' => __('(filtered from _MAX_ total entries)', 'b2b-commerce'),
-                'unknown_error' => __('Unknown error', 'b2b-commerce'),
-                'request_failed' => __('Request failed', 'b2b-commerce'),
-                'error' => __('Error', 'b2b-commerce'),
-                'error_occurred' => __('An error occurred. Please try again.', 'b2b-commerce')
+                'confirm_approve_user' => esc_js(__('Are you sure you want to approve this user?', 'b2b-commerce')),
+                'confirm_reject_user' => esc_js(__('Are you sure you want to reject this user?', 'b2b-commerce')),
+                'confirm_delete_pricing' => esc_js(__('Are you sure you want to delete this pricing rule?', 'b2b-commerce')),
+                'apply' => esc_js(__('Apply', 'b2b-commerce')),
+                'search' => esc_js(__('Search:', 'b2b-commerce')),
+                'show_entries' => esc_js(__('Show _MENU_ entries', 'b2b-commerce')),
+                'showing_entries' => esc_js(__('Showing _START_ to _END_ of _TOTAL_ entries', 'b2b-commerce')),
+                'showing_empty' => esc_js(__('Showing 0 to 0 of 0 entries', 'b2b-commerce')),
+                'filtered_entries' => esc_js(__('(filtered from _MAX_ total entries)', 'b2b-commerce')),
+                'unknown_error' => esc_js(__('Unknown error', 'b2b-commerce')),
+                'request_failed' => esc_js(__('Request failed', 'b2b-commerce')),
+                'error' => esc_js(__('Error', 'b2b-commerce')),
+                'error_occurred' => esc_js(__('An error occurred. Please try again.', 'b2b-commerce'))
             )
         ));
-    }
 });
+
+// Frontend AJAX handlers for user-facing functionality
+add_action('wp_ajax_nopriv_b2b_register_user', 'b2b_handle_frontend_registration');
+add_action('wp_ajax_b2b_register_user', 'b2b_handle_frontend_registration');
+
+function b2b_handle_frontend_registration() {
+    try {
+        // Use enhanced security validation with rate limiting
+        $security_check = b2b_validate_frontend_security('b2b_frontend_registration_nonce', 'user_registration');
+        if (is_wp_error($security_check)) {
+            wp_send_json_error($security_check->get_error_message());
+            return;
+        }
+        
+        // Validate required fields
+        $required_fields = ['username', 'email', 'password', 'first_name', 'last_name', 'company_name'];
+        foreach ($required_fields as $field) {
+            if (!isset($_POST[$field]) || empty($_POST[$field])) {
+                wp_send_json_error(sprintf(__('Missing required field: %s', 'b2b-commerce'), $field));
+                return;
+            }
+        }
+        
+        // Sanitize input data
+        $user_data = array(
+            'user_login' => b2b_sanitize_input($_POST['username'], 'text'),
+            'user_email' => b2b_sanitize_input($_POST['email'], 'email'),
+            'user_pass' => $_POST['password'], // Password will be hashed by WordPress
+            'first_name' => b2b_sanitize_input($_POST['first_name'], 'text'),
+            'last_name' => b2b_sanitize_input($_POST['last_name'], 'text'),
+            'role' => 'b2b_customer'
+        );
+        
+        // Validate email format
+        if (!is_email($user_data['user_email'])) {
+            wp_send_json_error(__('Invalid email address', 'b2b-commerce'));
+            return;
+        }
+        
+        // Validate username format
+        if (!validate_username($user_data['user_login'])) {
+            wp_send_json_error(__('Invalid username format', 'b2b-commerce'));
+            return;
+        }
+        
+        // Validate password strength
+        if (strlen($user_data['user_pass']) < 6) {
+            wp_send_json_error(__('Password must be at least 6 characters long', 'b2b-commerce'));
+            return;
+        }
+        
+        // Check if username or email already exists
+        if (username_exists($user_data['user_login'])) {
+            wp_send_json_error(__('Username already exists', 'b2b-commerce'));
+            return;
+        }
+        
+        if (email_exists($user_data['user_email'])) {
+            wp_send_json_error(__('Email address already exists', 'b2b-commerce'));
+            return;
+        }
+        
+        // Create user
+        $user_id = wp_create_user($user_data['user_login'], $user_data['user_pass'], $user_data['user_email']);
+        
+        if (is_wp_error($user_id)) {
+            wp_send_json_error($user_id->get_error_message());
+            return;
+        }
+        
+        // Update user meta
+        wp_update_user(array(
+            'ID' => $user_id,
+            'first_name' => $user_data['first_name'],
+            'last_name' => $user_data['last_name']
+        ));
+        
+        update_user_meta($user_id, 'company_name', b2b_sanitize_input($_POST['company_name'], 'text'));
+        update_user_meta($user_id, 'b2b_approval_status', 'pending');
+        
+        // Add additional fields if provided
+        if (isset($_POST['phone'])) {
+            update_user_meta($user_id, 'phone', b2b_sanitize_input($_POST['phone'], 'text'));
+        }
+        
+        if (isset($_POST['business_type'])) {
+            update_user_meta($user_id, 'business_type', b2b_sanitize_input($_POST['business_type'], 'text'));
+        }
+        
+        wp_send_json_success(__('Registration successful! Your account is pending approval.', 'b2b-commerce'));
+        
+    } catch (Exception $e) {
+        wp_send_json_error(__('Registration failed: ', 'b2b-commerce') . esc_html($e->getMessage()));
+    }
+}
+
+// Frontend AJAX handler for user login status check
+add_action('wp_ajax_nopriv_b2b_check_login_status', 'b2b_check_login_status');
+add_action('wp_ajax_b2b_check_login_status', 'b2b_check_login_status');
+
+function b2b_check_login_status() {
+    // Use enhanced security validation with rate limiting
+    $security_check = b2b_validate_frontend_security('b2b_frontend_nonce', 'login_check');
+    if (is_wp_error($security_check)) {
+        wp_send_json_error($security_check->get_error_message());
+        return;
+    }
+    
+    if (is_user_logged_in()) {
+        $user = wp_get_current_user();
+        $approval_status = get_user_meta($user->ID, 'b2b_approval_status', true);
+        
+        wp_send_json_success(array(
+            'logged_in' => true,
+            'user_id' => $user->ID,
+            'user_name' => $user->display_name,
+            'approval_status' => $approval_status ?: 'pending',
+            'is_b2b_user' => in_array('b2b_customer', $user->roles) || in_array('wholesale_customer', $user->roles) || in_array('distributor', $user->roles) || in_array('retailer', $user->roles)
+        ));
+    } else {
+        wp_send_json_success(array('logged_in' => false));
+    }
+}
 
 // Also localize for frontend
 add_action('wp_enqueue_scripts', function() {
     wp_localize_script('jquery', 'b2b_ajax', array(
-        'ajaxurl' => admin_url('admin-ajax.php'),
-        'nonce' => wp_create_nonce('b2b_ajax_nonce')
+        'ajaxurl' => esc_url(admin_url('admin-ajax.php')),
+        'nonce' => wp_create_nonce('b2b_ajax_nonce'),
+        'frontend_nonce' => wp_create_nonce('b2b_frontend_nonce'),
+        'registration_nonce' => wp_create_nonce('b2b_frontend_registration_nonce')
     ));
 }); 
 
@@ -775,7 +1044,7 @@ add_action('admin_notices', function() {
         echo '<li>✅ ' . esc_html__('"B2B Registration" has been automatically added to your main navigation menu', 'b2b-commerce') . '</li>';
         echo '<li>' . esc_html__('Add "B2B Dashboard" to your user menu (after login)', 'b2b-commerce') . '</li>';
         // translators: %s is the link to B2B Commerce Settings
-        echo '<li>' . sprintf(esc_html__('Configure B2B settings in %s', 'b2b-commerce'), '<a href="' . admin_url('admin.php?page=b2b-commerce') . '">' . esc_html__('B2B Commerce Settings', 'b2b-commerce') . '</a>') . '</li>';
+        echo '<li>' . sprintf(esc_html__('Configure B2B settings in %s', 'b2b-commerce'), '<a href="' . esc_url(admin_url('admin.php?page=b2b-commerce')) . '">' . esc_html__('B2B Commerce Settings', 'b2b-commerce') . '</a>') . '</li>';
         echo '<li>' . esc_html__('Upgrade to B2B Commerce for advanced features like quotes, product inquiries, and bulk calculator', 'b2b-commerce') . '</li>';
         echo '</ol>';
         echo '<p><em>' . esc_html__('All pages are ready to use with the appropriate shortcodes already added!', 'b2b-commerce') . '</em></p>';

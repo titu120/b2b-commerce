@@ -28,7 +28,12 @@ class ProductManager {
         // Note: b2b_bulk_order shortcode is handled by Frontend.php
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_bulk_order_scripts' ] );
         // Note: b2b_bulk_product_search AJAX handlers are in main plugin file
-        add_action( 'wp_loaded', [ $this, 'handle_bulk_order_form' ] );
+        // Move form submission to proper action hook for better performance
+        add_action( 'wp_loaded', [ $this, 'maybe_handle_bulk_order_form' ] );
+        
+        // Add AJAX action hooks for better security and performance
+        add_action( 'wp_ajax_b2b_bulk_product_search', [ $this, 'ajax_product_search' ] );
+        add_action( 'wp_ajax_nopriv_b2b_bulk_product_search', [ $this, 'ajax_product_search' ] );
 
         // Suppress WooCommerce's per-item removal message for non-purchasable items;
         // we show a single consolidated notice instead.
@@ -39,6 +44,9 @@ class ProductManager {
     public function add_product_visibility_fields() {
         global $post;
         echo '<div class="options_group">';
+        
+        // Add nonce field for security
+        wp_nonce_field( 'b2b_product_meta', '_b2b_product_meta_nonce' );
 
         $saved_roles = array_filter( array_map( 'trim', explode( ',', (string) get_post_meta( $post->ID, '_b2b_visible_roles', true ) ) ) );
         $saved_groups = array_filter( array_map( 'intval', explode( ',', (string) get_post_meta( $post->ID, '_b2b_visible_groups', true ) ) ) );
@@ -47,7 +55,7 @@ class ProductManager {
 
         // Toggle
         $css_styles = '#b2b_visibility_fields .form-field{margin:12px 0}#b2b_visibility_box{border:1px solid #e2e8f0;padding:12px 14px;border-radius:6px;background:#fafbfc}#b2b_visibility_fields select{min-width:280px;min-height:120px;width:100%}#b2b_visibility_summary{margin-left:8px;color:#666}';
-        echo '<style>' . esc_html($css_styles) . '</style>';
+        echo '<style>' . esc_html( $css_styles ) . '</style>';
         echo '<p class="form-field"><label for="_b2b_restrict_visibility">' . esc_html__('Restrict visibility', 'b2b-commerce') . '</label>';
         echo '<input type="checkbox" id="_b2b_restrict_visibility" name="_b2b_restrict_visibility" value="' . esc_attr(apply_filters('b2b_restrict_visibility_value', 'yes')) . '" ' . checked( $has_restrictions, true, false ) . ' />';
         echo ' <span class="description">' . esc_html__('Enable to limit who can see/purchase this product.', 'b2b-commerce') . '</span><span id="b2b_visibility_summary"></span></p>';
@@ -60,7 +68,7 @@ class ProductManager {
         echo '<select id="_b2b_visible_roles" name="_b2b_visible_roles[]" multiple="multiple">'; 
         foreach ( $all_roles as $role_key => $role_data ) {
             $selected = in_array( $role_key, $saved_roles, true ) ? 'selected' : '';
-            echo '<option value="' . esc_attr( $role_key ) . '" ' . $selected . '>' . esc_html( $role_data['name'] ) . '</option>';
+            echo '<option value="' . esc_attr( $role_key ) . '" ' . esc_attr( $selected ) . '>' . esc_html( $role_data['name'] ) . '</option>';
         }
         echo '</select><span class="description">' . __('Choose roles allowed to see this product.', 'b2b-commerce') . '</span></p>';
 
@@ -72,7 +80,7 @@ class ProductManager {
             if ( ! is_wp_error( $terms ) ) {
                 foreach ( $terms as $term ) {
                     $selected = in_array( (int) $term->term_id, $saved_groups, true ) ? 'selected' : '';
-                    echo '<option value="' . esc_attr( $term->term_id ) . '" ' . $selected . '>' . esc_html( $term->name ) . ' (#' . (int) $term->term_id . ')</option>';
+                    echo '<option value="' . esc_attr( $term->term_id ) . '" ' . esc_attr( $selected ) . '>' . esc_html( $term->name ) . ' (#' . (int) $term->term_id . ')</option>';
                 }
             }
         }
@@ -99,22 +107,31 @@ class ProductManager {
 
         echo '</div></div>';
 
-        // JS to toggle
+        // JS to toggle - using wp_localize_script for better security
+        $script_data = [
+            'choose_roles_text' => __('Choose roles...', 'b2b-commerce'),
+            'choose_groups_text' => __('Choose groups...', 'b2b-commerce'),
+            'roles_text' => __('Roles:', 'b2b-commerce'),
+            'groups_text' => __('Groups:', 'b2b-commerce'),
+            'no_restrictions_text' => __('No restrictions', 'b2b-commerce')
+        ];
+        
         echo '<script>jQuery(function($){
             var $box=$("#b2b_visibility_box"), $summary=$("#b2b_visibility_summary");
+            var b2bData = ' . wp_json_encode( $script_data ) . ';
             function toggleBox(){var on=$("#_b2b_restrict_visibility").is(":checked");$box.toggle(on);$summary.toggle(!on);} 
             function initSelect($el, placeholder){
                 if ($.fn.selectWoo) { $el.selectWoo({placeholder: placeholder, width:"100%", allowClear:true}); }
                 else if ($.fn.select2) { $el.select2({placeholder: placeholder, width:"100%", allowClear:true}); }
             }
-            initSelect($("#_b2b_visible_roles"), "' . esc_js(__('Choose roles...', 'b2b-commerce')) . '");
-            initSelect($("#_b2b_visible_groups"), "' . esc_js(__('Choose groups...', 'b2b-commerce')) . '");
+            initSelect($("#_b2b_visible_roles"), b2bData.choose_roles_text);
+            initSelect($("#_b2b_visible_groups"), b2bData.choose_groups_text);
             function updateSummary(){
                 var roles = $("#_b2b_visible_roles option:selected").map(function(){return $(this).text();}).get();
                 var groupsCount = $("#_b2b_visible_groups option:selected").length; 
-                var text = roles.length ? ("' . esc_js(__('Roles:', 'b2b-commerce')) . ' " + roles.join(", ")) : ""; 
-                if (groupsCount>0) text += (text?" | ":"") + ("' . esc_js(__('Groups:', 'b2b-commerce')) . ' " + groupsCount); 
-                $summary.text(text || "' . esc_js(__('No restrictions', 'b2b-commerce')) . '");
+                var text = roles.length ? (b2bData.roles_text + " " + roles.join(", ")) : ""; 
+                if (groupsCount>0) text += (text?" | ":"") + (b2bData.groups_text + " " + groupsCount); 
+                $summary.text(text || b2bData.no_restrictions_text);
             }
             updateSummary();
             $("#_b2b_visible_roles, #_b2b_visible_groups").on("change", updateSummary);
@@ -126,6 +143,16 @@ class ProductManager {
 
     // Save product visibility fields
     public function save_product_visibility_fields( $post_id ) {
+        // Security: Verify nonce and user permissions
+        if ( ! isset( $_POST['_b2b_product_meta_nonce'] ) || ! wp_verify_nonce( $_POST['_b2b_product_meta_nonce'], 'b2b_product_meta' ) ) {
+            return;
+        }
+        
+        // Security: Check user permissions
+        if ( ! current_user_can( 'edit_product', $post_id ) ) {
+            return;
+        }
+        
         $restrict = isset( $_POST['_b2b_restrict_visibility'] );
         if ( $restrict ) {
             // Roles can come as array from multi-select
@@ -237,6 +264,10 @@ class ProductManager {
     public function enqueue_admin_assets( $hook ) {
         // Only on product edit screens
         if ( ! isset( $_GET['post'] ) ) return;
+        
+        // Security: Sanitize and validate post ID
+        $post_id = intval( $_GET['post'] );
+        if ( $post_id <= 0 ) return;
 
         wp_enqueue_script( 'select2' );
         wp_enqueue_style( 'select2' );
@@ -381,6 +412,7 @@ class ProductManager {
     // Add category restriction fields
     public function add_category_restriction_fields() {
         ?>
+        <?php wp_nonce_field( 'b2b_category_meta', '_b2b_category_meta_nonce' ); ?>
         <div class="form-field">
             <label for="b2b_cat_roles"><?php echo esc_html__('Allowed Roles (comma separated)', 'b2b-commerce'); ?></label>
             <input type="text" name="b2b_cat_roles" id="b2b_cat_roles">
@@ -395,6 +427,7 @@ class ProductManager {
         $roles = get_term_meta( $term->term_id, 'b2b_cat_roles', true );
         $groups = get_term_meta( $term->term_id, 'b2b_cat_groups', true );
         ?>
+        <?php wp_nonce_field( 'b2b_category_meta', '_b2b_category_meta_nonce' ); ?>
         <tr class="form-field">
             <th scope="row"><label for="b2b_cat_roles"><?php echo esc_html__('Allowed Roles', 'b2b-commerce'); ?></label></th>
             <td><input type="text" name="b2b_cat_roles" id="b2b_cat_roles" value="<?php echo esc_attr( $roles ); ?>"></td>
@@ -406,6 +439,16 @@ class ProductManager {
         <?php
     }
     public function save_category_restriction_fields( $term_id ) {
+        // Security: Verify nonce and user permissions
+        if ( ! isset( $_POST['_b2b_category_meta_nonce'] ) || ! wp_verify_nonce( $_POST['_b2b_category_meta_nonce'], 'b2b_category_meta' ) ) {
+            return;
+        }
+        
+        // Security: Check user permissions
+        if ( ! current_user_can( 'manage_product_terms' ) ) {
+            return;
+        }
+        
         update_term_meta( $term_id, 'b2b_cat_roles', sanitize_text_field( $_POST['b2b_cat_roles'] ?? '' ) );
         update_term_meta( $term_id, 'b2b_cat_groups', sanitize_text_field( $_POST['b2b_cat_groups'] ?? '' ) );
     }
@@ -439,13 +482,17 @@ class ProductManager {
         <script>
         jQuery(function($){
             $('#b2b-add-row').on('click', function(){
-                var searchPlaceholder = '<?php echo esc_js(__('Search product by name or SKU', 'b2b-commerce')); ?>';
-                var qtyPlaceholder = '<?php echo esc_js(__('Quantity', 'b2b-commerce')); ?>';
+                var searchPlaceholder = '<?php echo esc_js( __('Search product by name or SKU', 'b2b-commerce') ); ?>';
+                var qtyPlaceholder = '<?php echo esc_js( __('Quantity', 'b2b-commerce') ); ?>';
                 $('#b2b-bulk-products').append('<div class="b2b-bulk-row"><input type="text" class="b2b-product-search" name="product_search[]" placeholder="' + searchPlaceholder + '" autocomplete="off"><input type="number" name="product_qty[]" min="1" value="1" placeholder="' + qtyPlaceholder + '"></div>');
             });
             $(document).on('input', '.b2b-product-search', function(){
                 var input = $(this);
-                $.get(b2bQuote.ajax_url, {action:'b2b_bulk_product_search', term:input.val()}, function(res){
+                $.post(b2bQuote.ajax_url, {
+                    action: 'b2b_bulk_product_search', 
+                    term: input.val(),
+                    nonce: b2bQuote.nonce
+                }, function(res){
                     if(res.data && res.data.length){
                         var list = $('<ul class="b2b-search-list"></ul>');
                         $.each(res.data, function(i, p){
@@ -483,69 +530,139 @@ class ProductManager {
 
     // AJAX product search
     public function ajax_product_search() {
-        $term = sanitize_text_field($_GET['term'] ?? '');
+        // Security: Verify nonce (use POST for AJAX requests)
+        if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'b2b_quote_request' ) ) {
+            wp_send_json_error( __( 'Security check failed.', 'b2b-commerce' ) );
+        }
+        
+        // Security: Check user permissions
+        if ( ! is_user_logged_in() ) {
+            wp_send_json_error( __( 'You must be logged in to search products.', 'b2b-commerce' ) );
+        }
+        
+        $term = sanitize_text_field($_POST['term'] ?? '');
+        
+        // Security: Validate search term length
+        if ( strlen( $term ) < 2 ) {
+            wp_send_json_error( __( 'Search term must be at least 2 characters.', 'b2b-commerce' ) );
+        }
+        
         $args = [
             'post_type' => 'product',
             'posts_per_page' => 10,
             's' => $term,
+            'post_status' => 'publish',
         ];
         $query = new \WP_Query($args);
         $results = [];
         foreach ($query->posts as $p) {
-            $results[] = [ 'id' => $p->ID, 'text' => $p->post_title ];
+            // Only show products the user can access
+            if ( $this->is_user_allowed_for_product( $p->ID ) ) {
+                $results[] = [ 'id' => $p->ID, 'text' => $p->post_title ];
+            }
         }
         wp_send_json_success($results);
     }
 
+    // Check if bulk order form should be handled (performance optimization)
+    public function maybe_handle_bulk_order_form() {
+        // Only process if this is a bulk order form submission
+        if ( ! isset( $_POST['b2b_bulk_order_nonce'] ) ) {
+            return;
+        }
+        
+        $this->handle_bulk_order_form();
+    }
+    
     // Handle bulk order form submission
     public function handle_bulk_order_form() {
-        if ( isset($_POST['b2b_bulk_order_nonce']) && wp_verify_nonce($_POST['b2b_bulk_order_nonce'], 'b2b_bulk_order') ) {
-            $product_ids = $_POST['product_id'] ?? [];
-            $qtys = $_POST['product_qty'] ?? [];
-            foreach ($product_ids as $i => $pid) {
-                $pid = intval($pid);
-                $qty = intval($qtys[$i] ?? 1);
+        // Security: Verify nonce
+        if ( ! isset($_POST['b2b_bulk_order_nonce']) || ! wp_verify_nonce($_POST['b2b_bulk_order_nonce'], 'b2b_bulk_order') ) {
+            wp_die( __( 'Security check failed.', 'b2b-commerce' ) );
+        }
+        
+        // Security: Check user permissions
+        if ( ! is_user_logged_in() ) {
+            wp_die( __( 'You must be logged in to place bulk orders.', 'b2b-commerce' ) );
+        }
+        
+        // Security: Check if user has B2B permissions
+        $user = wp_get_current_user();
+        $b2b_roles = apply_filters('b2b_customer_roles', ['b2b_customer', 'wholesale_customer', 'distributor', 'retailer']);
+        if ( ! array_intersect( $user->roles, $b2b_roles ) && ! current_user_can( 'manage_options' ) ) {
+            wp_die( __( 'You do not have permission to place bulk orders.', 'b2b-commerce' ) );
+        }
+        
+        $product_ids = $_POST['product_id'] ?? [];
+        $qtys = $_POST['product_qty'] ?? [];
+        
+        // Security: Validate input structure
+        if ( ! is_array( $product_ids ) || ! is_array( $qtys ) ) {
+            wp_die( __( 'Invalid input format.', 'b2b-commerce' ) );
+        }
+        
+        // Security: Validate and sanitize input
+        $product_ids = array_map( 'intval', $product_ids );
+        $qtys = array_map( 'intval', $qtys );
+        
+        foreach ($product_ids as $i => $pid) {
+            $pid = intval($pid);
+            $qty = intval($qtys[$i] ?? 1);
+            
+            // Security: Validate product access and quantity
+            if ($pid && $qty > 0 && $this->is_user_allowed_for_product($pid)) {
+                \WC()->cart->add_to_cart($pid, $qty);
+            }
+        }
+        
+        // Handle CSV import
+        if ( !empty($_FILES['b2b_bulk_csv']['tmp_name']) ) {
+            // Security: Validate file upload error
+            if ( $_FILES['b2b_bulk_csv']['error'] !== UPLOAD_ERR_OK ) {
+                wp_die(__('File upload failed.', 'b2b-commerce'));
+            }
+            
+            // Validate file type and security
+            $allowed_types = apply_filters('b2b_allowed_import_file_types', ['csv', 'txt']);
+            $file_extension = strtolower(pathinfo($_FILES['b2b_bulk_csv']['name'], PATHINFO_EXTENSION));
+            if (!in_array($file_extension, $allowed_types)) {
+                wp_die(__('Invalid file type. Only CSV and TXT files are allowed.', 'b2b-commerce'));
+            }
+            
+            // Additional security: Check file size (max 2MB)
+            if ($_FILES['b2b_bulk_csv']['size'] > 2 * 1024 * 1024) {
+                wp_die(__('File too large. Maximum size is 2MB.', 'b2b-commerce'));
+            }
+            
+            // Security: Validate file signature/content
+            $file_content = file_get_contents($_FILES['b2b_bulk_csv']['tmp_name'], false, null, 0, 1024);
+            if (empty($file_content) || !is_string($file_content)) {
+                wp_die(__('Invalid file content.', 'b2b-commerce'));
+            }
+            
+            // Validate MIME type
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime_type = finfo_file($finfo, $_FILES['b2b_bulk_csv']['tmp_name']);
+            finfo_close($finfo);
+            $allowed_mimes = ['text/csv', 'text/plain', 'application/csv'];
+            if (!in_array($mime_type, $allowed_mimes)) {
+                wp_die(__('Invalid file MIME type. Only CSV and TXT files are allowed.', 'b2b-commerce'));
+            }
+            
+            $file = fopen($_FILES['b2b_bulk_csv']['tmp_name'], 'r');
+            while ( ($row = fgetcsv($file)) !== false ) {
+                $pid = wc_get_product_id_by_sku($row[0]);
+                if ( !$pid ) $pid = intval($row[0]);
+                $qty = intval($row[1] ?? 1);
                 if ($pid && $qty > 0) {
                     \WC()->cart->add_to_cart($pid, $qty);
                 }
             }
-            // Handle CSV import
-            if ( !empty($_FILES['b2b_bulk_csv']['tmp_name']) ) {
-                // Validate file type and security
-        $allowed_types = apply_filters('b2b_allowed_import_file_types', ['csv', 'txt']);
-        $file_extension = strtolower(pathinfo($_FILES['b2b_bulk_csv']['name'], PATHINFO_EXTENSION));
-        if (!in_array($file_extension, $allowed_types)) {
-            wp_die(__('Invalid file type. Only CSV and TXT files are allowed.', 'b2b-commerce'));
+            fclose($file);
         }
         
-        // Additional security: Check file size (max 2MB)
-        if ($_FILES['b2b_bulk_csv']['size'] > 2 * 1024 * 1024) {
-            wp_die(__('File too large. Maximum size is 2MB.', 'b2b-commerce'));
-        }
-        
-        // Validate MIME type
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mime_type = finfo_file($finfo, $_FILES['b2b_bulk_csv']['tmp_name']);
-        finfo_close($finfo);
-        $allowed_mimes = ['text/csv', 'text/plain', 'application/csv'];
-        if (!in_array($mime_type, $allowed_mimes)) {
-            wp_die(__('Invalid file MIME type. Only CSV and TXT files are allowed.', 'b2b-commerce'));
-        }
-        
-        $file = fopen($_FILES['b2b_bulk_csv']['tmp_name'], 'r');
-                while ( ($row = fgetcsv($file)) !== false ) {
-                    $pid = wc_get_product_id_by_sku($row[0]);
-                    if ( !$pid ) $pid = intval($row[0]);
-                    $qty = intval($row[1] ?? 1);
-                    if ($pid && $qty > 0) {
-                        \WC()->cart->add_to_cart($pid, $qty);
-                    }
-                }
-                fclose($file);
-            }
-            wp_safe_redirect( wc_get_cart_url() );
-            exit;
-        }
+        wp_safe_redirect( esc_url( wc_get_cart_url() ) );
+        exit;
     }
 
     // Advanced product management features
@@ -554,7 +671,7 @@ class ProductManager {
         
         $output = '<div class="b2b-bulk-order">';
         $output .= '<h3>' . esc_html__('Bulk Order System', 'b2b-commerce') . '</h3>';
-        $output .= '<form method="post" action="' . admin_url('admin-post.php') . '">';
+        $output .= '<form method="post" action="' . esc_url( admin_url('admin-post.php') ) . '">';
         $output .= '<input type="hidden" name="action" value="b2b_process_bulk_order">';
         $output .= wp_nonce_field('b2b_bulk_order', 'b2b_bulk_nonce', true, false);
         
@@ -597,7 +714,12 @@ class ProductManager {
     public function csv_import() {
         if (!current_user_can('manage_options')) return '';
         
-        $action = $_GET['action'] ?? 'import';
+        // Security: Sanitize and validate action parameter
+        $action = sanitize_text_field( $_GET['action'] ?? 'import' );
+        $allowed_actions = ['import', 'process'];
+        if ( ! in_array( $action, $allowed_actions, true ) ) {
+            $action = 'import';
+        }
         
         if ($action === 'process' && isset($_POST['b2b_csv_nonce'])) {
             $this->handle_csv_import();
@@ -623,7 +745,7 @@ class ProductManager {
         
         echo '<h3>' . esc_html__('Export Products', 'b2b-commerce') . '</h3>';
         echo '<p>' . esc_html__('Export all products to CSV format.', 'b2b-commerce') . '</p>';
-        echo '<form method="post" action="' . admin_url('admin-post.php') . '">';
+        echo '<form method="post" action="' . esc_url( admin_url('admin-post.php') ) . '">';
         echo '<input type="hidden" name="action" value="b2b_export_products">';
         echo wp_nonce_field('b2b_export_products', 'b2b_export_nonce', true, false);
         echo '<p><button type="submit" class="button">' . esc_html__('Export Products', 'b2b-commerce') . '</button></p>';
@@ -632,12 +754,12 @@ class ProductManager {
         echo '<script>
         function downloadProductTemplate() {
             var template = "name,sku,description,short_description,regular_price,sale_price,categories,tags,stock_quantity,weight,length,width,height,image_url,visible_roles,wholesale_only\\n";
-            template += "' . esc_js(__('Sample Product', 'b2b-commerce')) . ',SKU001,' . esc_js(__('Product description', 'b2b-commerce')) . ',' . esc_js(__('Short description', 'b2b-commerce')) . ',100.00,80.00,Electronics,Sample,50,1.5,10,5,2,https://example.com/image.jpg,b2b_customer,no\\n";
+            template += "' . esc_js( __('Sample Product', 'b2b-commerce') ) . ',SKU001,' . esc_js( __('Product description', 'b2b-commerce') ) . ',' . esc_js( __('Short description', 'b2b-commerce') ) . ',100.00,80.00,Electronics,Sample,50,1.5,10,5,2,https://example.com/image.jpg,b2b_customer,no\\n";
             var blob = new Blob([template], {type: "text/csv"});
             var url = window.URL.createObjectURL(blob);
             var a = document.createElement("a");
             a.href = url;
-            a.download = "' . esc_js(__('products_template.csv', 'b2b-commerce')) . '";
+            a.download = "' . esc_js( __('products_template.csv', 'b2b-commerce') ) . '";
             a.click();
         }
         </script>';
@@ -652,7 +774,7 @@ class ProductManager {
             wp_die(__('File upload failed.', 'b2b-commerce'));
         }
         
-        // Validate file type and security
+        // Security: Validate file type and security
         $allowed_types = ['csv', 'txt'];
         $file_extension = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
         if (!in_array($file_extension, $allowed_types)) {
@@ -662,6 +784,12 @@ class ProductManager {
         // Check file size (max 5MB for product import)
         if ($_FILES['csv_file']['size'] > 5 * 1024 * 1024) {
             wp_die(__('File too large. Maximum size is 5MB.', 'b2b-commerce'));
+        }
+        
+        // Security: Validate file signature/content
+        $file_content = file_get_contents($_FILES['csv_file']['tmp_name'], false, null, 0, 1024);
+        if (empty($file_content) || !is_string($file_content)) {
+            wp_die(__('Invalid file content.', 'b2b-commerce'));
         }
         
         // Validate MIME type
@@ -697,7 +825,7 @@ class ProductManager {
                 }
             } catch (Exception $e) {
                 // translators: %1$d is the row number, %2$s is the error message
-                $errors[] = sprintf(__('Row %1$d: %2$s', 'b2b-commerce'), ($imported + $updated + 1), $e->getMessage());
+                $errors[] = sprintf(__('Row %1$d: %2$s', 'b2b-commerce'), ($imported + $updated + 1), esc_html( $e->getMessage() ));
             }
         }
         
@@ -709,7 +837,7 @@ class ProductManager {
             $message .= ' ' . __('Errors:', 'b2b-commerce') . ' ' . implode(', ', $errors);
         }
         
-        wp_redirect(admin_url('admin.php?page=b2b-products&imported=' . $imported . '&updated=' . $updated . '&errors=' . count($errors)));
+        wp_redirect( esc_url( admin_url('admin.php?page=b2b-products&imported=' . $imported . '&updated=' . $updated . '&errors=' . count($errors)) ) );
         exit;
     }
 
@@ -799,13 +927,36 @@ class ProductManager {
 
     // Enhanced bulk order functionality
     public function process_bulk_order() {
+        // Security: Verify nonce
         if (!wp_verify_nonce($_POST['b2b_bulk_nonce'], 'b2b_bulk_order')) {
             wp_die(__('Security check failed.', 'b2b-commerce'));
+        }
+        
+        // Security: Check user permissions
+        if ( ! is_user_logged_in() ) {
+            wp_die( __( 'You must be logged in to place bulk orders.', 'b2b-commerce' ) );
+        }
+        
+        // Security: Check if user has B2B permissions
+        $user = wp_get_current_user();
+        $b2b_roles = apply_filters('b2b_customer_roles', ['b2b_customer', 'wholesale_customer', 'distributor', 'retailer']);
+        if ( ! array_intersect( $user->roles, $b2b_roles ) && ! current_user_can( 'manage_options' ) ) {
+            wp_die( __( 'You do not have permission to place bulk orders.', 'b2b-commerce' ) );
         }
         
         $product_searches = $_POST['product_search'] ?? [];
         $product_skus = $_POST['product_sku'] ?? [];
         $product_qtys = $_POST['product_qty'] ?? [];
+        
+        // Security: Validate input structure
+        if ( ! is_array( $product_searches ) || ! is_array( $product_skus ) || ! is_array( $product_qtys ) ) {
+            wp_die( __( 'Invalid input format.', 'b2b-commerce' ) );
+        }
+        
+        // Security: Sanitize input data
+        $product_searches = array_map( 'sanitize_text_field', $product_searches );
+        $product_skus = array_map( 'sanitize_text_field', $product_skus );
+        $product_qtys = array_map( 'intval', $product_qtys );
         
         $added_to_cart = 0;
         $errors = [];
@@ -864,7 +1015,7 @@ class ProductManager {
             }
         }
         
-        wp_redirect(wc_get_cart_url());
+        wp_redirect( esc_url( wc_get_cart_url() ) );
         exit;
     }
 

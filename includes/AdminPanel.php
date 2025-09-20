@@ -17,6 +17,131 @@
             add_action('admin_post_b2b_update_inquiry', [$this, 'handle_update_inquiry']);
             add_action('admin_post_b2b_delete_inquiry', [$this, 'handle_delete_inquiry']);
             add_action('admin_post_b2b_migrate_quotes', [$this, 'handle_migrate_quotes']);
+            add_action('admin_post_b2b_save_email_template', [$this, 'handle_save_email_template']);
+        }
+
+        /**
+         * Security helper method to validate nonce and user permissions
+         * 
+         * @param string $nonce_name The nonce name to verify
+         * @param string $capability The capability required (default: 'manage_options')
+         * @param string $method The HTTP method to check (POST, GET, REQUEST)
+         * @return bool|WP_Error True if valid, WP_Error if invalid
+         */
+        private function validate_security($nonce_name, $capability = 'manage_options', $method = 'POST') {
+            // Check user permissions first
+            if (!current_user_can($capability)) {
+                return new WP_Error('unauthorized', __('You do not have sufficient permissions to perform this action.', 'b2b-commerce'));
+            }
+            
+            // Get the appropriate superglobal based on method
+            $data = null;
+            switch (strtoupper($method)) {
+                case 'GET':
+                    $data = $_GET;
+                    break;
+                case 'POST':
+                    $data = $_POST;
+                    break;
+                case 'REQUEST':
+                    $data = $_REQUEST;
+                    break;
+                default:
+                    return new WP_Error('invalid_method', __('Invalid HTTP method specified.', 'b2b-commerce'));
+            }
+            
+            // Verify nonce
+            if (!isset($data['nonce']) && !isset($data['_wpnonce'])) {
+                return new WP_Error('nonce_missing', __('Security token missing.', 'b2b-commerce'));
+            }
+            
+            $nonce_value = $data['nonce'] ?? $data['_wpnonce'] ?? '';
+            if (!wp_verify_nonce($nonce_value, $nonce_name)) {
+                return new WP_Error('nonce_failed', __('Security check failed. Please refresh the page and try again.', 'b2b-commerce'));
+            }
+            
+            return true;
+        }
+
+        /**
+         * Enhanced input sanitization and validation
+         * 
+         * @param mixed $data The data to sanitize
+         * @param string $type The type of sanitization (text, email, int, float, url, textarea)
+         * @param array $options Additional validation options
+         * @return mixed Sanitized data
+         */
+        private function sanitize_input($data, $type = 'text', $options = []) {
+            if (is_array($data)) {
+                return array_map(function($item) use ($type, $options) {
+                    return $this->sanitize_input($item, $type, $options);
+                }, $data);
+            }
+            
+            // Handle null or empty data
+            if (is_null($data) || $data === '') {
+                return $data;
+            }
+            
+            switch ($type) {
+                case 'email':
+                    $sanitized = sanitize_email($data);
+                    if (!empty($sanitized) && !is_email($sanitized)) {
+                        return new WP_Error('invalid_email', __('Invalid email address.', 'b2b-commerce'));
+                    }
+                    return $sanitized;
+                case 'int':
+                    $sanitized = intval($data);
+                    if (isset($options['min']) && $sanitized < $options['min']) {
+                        return new WP_Error('value_too_small', sprintf(__('Value must be at least %d.', 'b2b-commerce'), $options['min']));
+                    }
+                    if (isset($options['max']) && $sanitized > $options['max']) {
+                        return new WP_Error('value_too_large', sprintf(__('Value must be no more than %d.', 'b2b-commerce'), $options['max']));
+                    }
+                    return $sanitized;
+                case 'float':
+                    $sanitized = floatval($data);
+                    if (isset($options['min']) && $sanitized < $options['min']) {
+                        return new WP_Error('value_too_small', sprintf(__('Value must be at least %f.', 'b2b-commerce'), $options['min']));
+                    }
+                    if (isset($options['max']) && $sanitized > $options['max']) {
+                        return new WP_Error('value_too_large', sprintf(__('Value must be no more than %f.', 'b2b-commerce'), $options['max']));
+                    }
+                    return $sanitized;
+                case 'url':
+                    return esc_url_raw($data);
+                case 'textarea':
+                    return sanitize_textarea_field($data);
+                case 'text':
+                default:
+                    $sanitized = sanitize_text_field($data);
+                    if (isset($options['max_length']) && strlen($sanitized) > $options['max_length']) {
+                        return new WP_Error('text_too_long', sprintf(__('Text must be no more than %d characters.', 'b2b-commerce'), $options['max_length']));
+                    }
+                    return $sanitized;
+            }
+        }
+
+        /**
+         * Helper method to generate nonce field HTML
+         * 
+         * @param string $action The nonce action name
+         * @param string $name The nonce field name (default: 'nonce')
+         * @param bool $referer Whether to include referer field (default: true)
+         * @return string The nonce field HTML
+         */
+        private function get_nonce_field($action, $name = 'nonce', $referer = true) {
+            return wp_nonce_field($action, $name, $referer, false);
+        }
+
+        /**
+         * Helper method to generate nonce for AJAX requests
+         * 
+         * @param string $action The nonce action name
+         * @return string The nonce value
+         */
+        private function get_ajax_nonce($action) {
+            return wp_create_nonce($action);
         }
 
         // Add main admin menu and submenus
@@ -221,9 +346,9 @@
                 $title       = $item[0];
                 $badge_count = $item[2];
 
-                echo '<a href="' . esc_url(admin_url('admin.php?page=' . $page)) . '" class="b2b-nav-item ' . $is_active . '">';
-                echo '<span class="dashicons ' . $icon . '"></span>';
-                echo '<span>' . $title . '</span>';
+                echo '<a href="' . esc_url(admin_url('admin.php?page=' . $page)) . '" class="b2b-nav-item ' . esc_attr($is_active) . '">';
+                echo '<span class="dashicons ' . esc_attr($icon) . '"></span>';
+                echo '<span>' . esc_html($title) . '</span>';
                 echo '</a>';
             }
             echo '</div>';
@@ -296,7 +421,7 @@
             $table               = $wpdb->prefix . 'b2b_pricing_rules';
             $pricing_rules_count = 0;
             if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table)) === $table) {
-                $pricing_rules_count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM %i", $table));
+                $pricing_rules_count = $wpdb->get_var("SELECT COUNT(*) FROM `" . $wpdb->_escape($table) . "`");
             }
 
             // Get user role breakdown
@@ -336,7 +461,7 @@
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
                 <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Total B2B Users', 'b2b-commerce') . '</h3>
-                <p style="margin: 15px 0 5px 0; font-size: 2em; font-weight: bold; color: #2196f3;">' . $total_users . '</p>
+                <p style="margin: 15px 0 5px 0; font-size: 2em; font-weight: bold; color: #2196f3;">' . esc_html($total_users) . '</p>
                 <small style="color: #666;">' . __('Active B2B customers', 'b2b-commerce') . '</small>
             </div>
             <span class="dashicons dashicons-groups" style="font-size: 2.5em; color: #2196f3;"></span>
@@ -347,7 +472,7 @@
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
                 <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Pending Approvals', 'b2b-commerce') . '</h3>
-                <p style="margin: 15px 0 5px 0; font-size: 2em; font-weight: bold; color: #ff9800;">' . $pending_users . '</p>
+                <p style="margin: 15px 0 5px 0; font-size: 2em; font-weight: bold; color: #ff9800;">' . esc_html($pending_users) . '</p>
                 <small style="color: #666;">' . __('Awaiting approval', 'b2b-commerce') . '</small>
             </div>
             <span class="dashicons dashicons-clock" style="font-size: 2.5em; color: #ff9800;"></span>
@@ -358,7 +483,7 @@
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
                 <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Total Revenue', 'b2b-commerce') . '</h3>
-                <p style="margin: 15px 0 5px 0; font-size: 2em; font-weight: bold; color: #9c27b0;">$' . number_format($total_revenue, 2) . '</p>
+                <p style="margin: 15px 0 5px 0; font-size: 2em; font-weight: bold; color: #9c27b0;">$' . esc_html(number_format($total_revenue, 2)) . '</p>
                 <small style="color: #666;">' . __('All time revenue', 'b2b-commerce') . '</small>
             </div>
             <span class="dashicons dashicons-chart-line" style="font-size: 2.5em; color: #9c27b0;"></span>
@@ -369,7 +494,7 @@
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
                 <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Total Orders', 'b2b-commerce') . '</h3>
-                <p style="margin: 15px 0 5px 0; font-size: 2em; font-weight: bold; color: #4caf50;">' . $total_orders . '</p>
+                <p style="margin: 15px 0 5px 0; font-size: 2em; font-weight: bold; color: #4caf50;">' . esc_html($total_orders) . '</p>
                 <small style="color: #666;">' . __('Completed orders', 'b2b-commerce') . '</small>
             </div>
             <span class="dashicons dashicons-cart" style="font-size: 2.5em; color: #4caf50;"></span>
@@ -383,7 +508,7 @@
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
                 <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Approved Users', 'b2b-commerce') . '</h3>
-                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #4caf50;">' . $approved_users . '</p>
+                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #4caf50;">' . esc_html($approved_users) . '</p>
             </div>
             <span class="dashicons dashicons-yes-alt" style="font-size: 2em; color: #4caf50;"></span>
         </div>
@@ -393,7 +518,7 @@
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
                 <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Rejected Users', 'b2b-commerce') . '</h3>
-                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #f44336;">' . $rejected_users . '</p>
+                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #f44336;">' . esc_html($rejected_users) . '</p>
             </div>
             <span class="dashicons dashicons-no-alt" style="font-size: 2em; color: #f44336;"></span>
         </div>
@@ -403,7 +528,7 @@
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
                 <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Monthly Revenue', 'b2b-commerce') . '</h3>
-                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #ff9800;">$' . number_format($monthly_revenue, 2) . '</p>
+                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #ff9800;">$' . esc_html(number_format($monthly_revenue, 2)) . '</p>
             </div>
             <span class="dashicons dashicons-calendar-alt" style="font-size: 2em; color: #ff9800;"></span>
         </div>
@@ -413,7 +538,7 @@
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
                 <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Pricing Rules', 'b2b-commerce') . '</h3>
-                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #2196f3;">' . $pricing_rules_count . '</p>
+                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #2196f3;">' . esc_html($pricing_rules_count) . '</p>
             </div>
             <span class="dashicons dashicons-tag" style="font-size: 2em; color: #2196f3;"></span>
         </div>
@@ -423,7 +548,7 @@
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
                 <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Pending Quotes', 'b2b-commerce') . '</h3>
-                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #ff9800;">' . $pending_quotes . '</p>
+                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #ff9800;">' . esc_html($pending_quotes) . '</p>
             </div>
             <span class="dashicons dashicons-email-alt" style="font-size: 2em; color: #ff9800;"></span>
         </div>
@@ -433,7 +558,7 @@
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
                 <h3 style="margin: 0; color: #666; font-size: 1.2em;">' . __('Pending Inquiries', 'b2b-commerce') . '</h3>
-                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #e91e63;">' . $pending_inquiries . '</p>
+                <p style="margin: 15px 0 5px 0; font-size: 1.5em; font-weight: bold; color: #e91e63;">' . esc_html($pending_inquiries) . '</p>
             </div>
             <span class="dashicons dashicons-format-chat" style="font-size: 2em; color: #e91e63;"></span>
         </div>
@@ -447,19 +572,19 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
         <div style="text-align: center; padding: 24px; border: 1px solid rgb(0 0 0 / .06) !important; border-radius: 6px;">
             <h3 style="margin: 0 0 15px 0; color: #2196f3;">' . __('B2B Customers', 'b2b-commerce') . '</h3>
-            <p style="margin: 0; font-size: 1.5em; font-weight: bold;">' . $role_breakdown['b2b_customer'] . '</p>
+            <p style="margin: 0; font-size: 1.5em; font-weight: bold;">' . esc_html($role_breakdown['b2b_customer']) . '</p>
         </div>
         <div style="text-align: center; padding: 24px; border: 1px solid rgb(0 0 0 / .06) !important; border-radius: 6px;">
             <h3 style="margin: 0 0 15px 0; color: #4caf50;">' . __('Wholesale', 'b2b-commerce') . '</h3>
-            <p style="margin: 0; font-size: 1.5em; font-weight: bold;">' . $role_breakdown['wholesale_customer'] . '</p>
+            <p style="margin: 0; font-size: 1.5em; font-weight: bold;">' . esc_html($role_breakdown['wholesale_customer']) . '</p>
         </div>
         <div style="text-align: center; padding: 24px; border: 1px solid rgb(0 0 0 / .06) !important; border-radius: 6px;">
             <h3 style="margin: 0 0 15px 0; color: #ff9800;">' . __('Distributors', 'b2b-commerce') . '</h3>
-            <p style="margin: 0; font-size: 1.5em; font-weight: bold;">' . $role_breakdown['distributor'] . '</p>
+            <p style="margin: 0; font-size: 1.5em; font-weight: bold;">' . esc_html($role_breakdown['distributor']) . '</p>
         </div>
         <div style="text-align: center; padding: 24px; border: 1px solid rgb(0 0 0 / .06) !important; border-radius: 6px;">
             <h3 style="margin: 0 0 15px 0; color: #9c27b0;">' . __('Retailers', 'b2b-commerce') . '</h3>
-            <p style="margin: 0; font-size: 1.5em; font-weight: bold;">' . $role_breakdown['retailer'] . '</p>
+            <p style="margin: 0; font-size: 1.5em; font-weight: bold;">' . esc_html($role_breakdown['retailer']) . '</p>
         </div>
     </div>
 </div>';
@@ -485,13 +610,13 @@
                     $status_class = $order->get_status() === 'completed' ? 'success' : ($order->get_status() === 'processing' ? 'warning' : 'danger');
                     $content .= '
             <tr>
-                <td><strong><a href="' . admin_url('post.php?post=' . $order->get_id() . '&action=edit') . '">#' . $order->get_id() . '</a></strong></td>
+                <td><strong><a href="' . esc_url(esc_url(admin_url('post.php?post=' . $order->get_id() . '&action=edit'))) . '">#' . esc_html($order->get_id()) . '</a></strong></td>
                 <td>' . esc_html($order->get_billing_first_name() . ' ' . $order->get_billing_last_name()) . '</td>
                 <td>' . esc_html($order->get_date_created()->date('Y-m-d H:i')) . '</td>
                 <td><strong>' . esc_html(get_woocommerce_currency_symbol() . number_format($order->get_total(), 2)) . '</strong></td>
-                <td><span class="b2b-badge b2b-badge-' . $status_class . '">' . esc_html(wc_get_order_status_name($order->get_status())) . '</span></td>
+                <td><span class="b2b-badge b2b-badge-' . esc_attr($status_class) . '">' . esc_html(wc_get_order_status_name($order->get_status())) . '</span></td>
                 <td>
-                    <a href="' . admin_url('post.php?post=' . $order->get_id() . '&action=edit') . '" class="b2b-admin-btn" style="padding: 4px 8px; font-size: 0.8em;"><span class="icon dashicons dashicons-edit"></span>' . __('View', 'b2b-commerce') . '</a>
+                    <a href="' . esc_url(admin_url('post.php?post=' . $order->get_id() . '&action=edit')) . '" class="b2b-admin-btn" style="padding: 4px 8px; font-size: 0.8em;"><span class="icon dashicons dashicons-edit"></span>' . __('View', 'b2b-commerce') . '</a>
                 </td>
             </tr>';
                 }
@@ -499,7 +624,7 @@
         </tbody>
     </table>
     <div style="margin-top: 15px; text-align: center;">
-        <a href="' . admin_url('edit.php?post_type=shop_order') . '" class="b2b-admin-btn">' . __('View All Orders', 'b2b-commerce') . '</a>
+        <a href="' . esc_url(admin_url('edit.php?post_type=shop_order')) . '" class="b2b-admin-btn">' . __('View All Orders', 'b2b-commerce') . '</a>
     </div>
 </div>';
             } else {
@@ -543,10 +668,10 @@
             // Show success messages
             $success_message = '';
             if (isset($_GET['approved']) && $_GET['approved'] == '1') {
-                $success_message = '<div class="b2b-admin-card" style="color: #4caf50; border-color: #4caf50;"><span class="icon dashicons dashicons-yes-alt"></span> ' . __('User approved successfully!', 'b2b-commerce') . '</div>';
+                $success_message = '<div class="b2b-admin-card" style="color: #4caf50; border-color: #4caf50;"><span class="icon dashicons dashicons-yes-alt"></span> ' . esc_html(__('User approved successfully!', 'b2b-commerce')) . '</div>';
             }
             if (isset($_GET['rejected']) && $_GET['rejected'] == '1') {
-                $success_message = '<div class="b2b-admin-card" style="color: #f44336; border-color: #f44336;"><span class="icon dashicons dashicons-no-alt"></span> ' . __('User rejected successfully!', 'b2b-commerce') . '</div>';
+                $success_message = '<div class="b2b-admin-card" style="color: #f44336; border-color: #f44336;"><span class="icon dashicons dashicons-no-alt"></span> ' . esc_html(__('User rejected successfully!', 'b2b-commerce')) . '</div>';
             }
 
             $content = '
@@ -619,15 +744,15 @@
                 <td>' . esc_html($user->user_email) . '</td>
                 <td>' . esc_html(implode(', ', $user->roles)) . '</td>
                 <td>' . esc_html(get_user_meta($user->ID, 'company_name', true)) . '</td>
-                <td><span class="b2b-badge b2b-badge-' . $badge_class . '">' . esc_html($approval_status) . '</span></td>
+                <td><span class="b2b-badge b2b-badge-' . esc_attr($badge_class) . '">' . esc_html($approval_status) . '</span></td>
                 <td>
-                    <a href="' . admin_url('user-edit.php?user_id=' . $user->ID) . '" class="b2b-admin-btn" style="padding: 6px 12px; font-size: 0.9em;"><span class="icon dashicons dashicons-edit"></span>' . __('Edit', 'b2b-commerce') . '</a>';
+                    <a href="' . esc_url(admin_url('user-edit.php?user_id=' . $user->ID)) . '" class="b2b-admin-btn" style="padding: 6px 12px; font-size: 0.9em;"><span class="icon dashicons dashicons-edit"></span>' . __('Edit', 'b2b-commerce') . '</a>';
 
                 // Add approval/rejection buttons for pending users
                 if ($approval_status === 'pending') {
                     $content .= '
-                    <a href="' . admin_url('admin-post.php?action=b2b_approve_user&user_id=' . $user->ID . '&_wpnonce=' . wp_create_nonce('b2b_approve_user_' . $user->ID)) . '" class="b2b-admin-btn b2b-admin-btn-success" style="padding: 6px 12px; font-size: 0.9em; margin-left: 5px;"><span class="icon dashicons dashicons-yes-alt"></span>' . __('Approve', 'b2b-commerce') . '</a>
-                    <a href="' . admin_url('admin-post.php?action=b2b_reject_user&user_id=' . $user->ID . '&_wpnonce=' . wp_create_nonce('b2b_reject_user_' . $user->ID)) . '" class="b2b-admin-btn b2b-admin-btn-danger" style="padding: 6px 12px; font-size: 0.9em; margin-left: 5px;"><span class="icon dashicons dashicons-no-alt"></span>' . __('Reject', 'b2b-commerce') . '</a>';
+                    <a href="' . esc_url(admin_url('admin-post.php?action=b2b_approve_user&user_id=' . $user->ID . '&_wpnonce=' . wp_create_nonce('b2b_approve_user_' . $user->ID))) . '" class="b2b-admin-btn b2b-admin-btn-success" style="padding: 6px 12px; font-size: 0.9em; margin-left: 5px;"><span class="icon dashicons dashicons-yes-alt"></span>' . __('Approve', 'b2b-commerce') . '</a>
+                    <a href="' . esc_url(admin_url('admin-post.php?action=b2b_reject_user&user_id=' . $user->ID . '&_wpnonce=' . wp_create_nonce('b2b_reject_user_' . $user->ID))) . '" class="b2b-admin-btn b2b-admin-btn-danger" style="padding: 6px 12px; font-size: 0.9em; margin-left: 5px;"><span class="icon dashicons dashicons-no-alt"></span>' . __('Reject', 'b2b-commerce') . '</a>';
                 }
 
                 $content .= '
@@ -819,11 +944,16 @@
 
             // Handle form submission
             if (isset($_POST['b2b_add_user_nonce']) && wp_verify_nonce($_POST['b2b_add_user_nonce'], 'b2b_add_user')) {
-                $username = sanitize_user($_POST['username']);
-                $email    = sanitize_email($_POST['email']);
-                $role     = sanitize_text_field($_POST['role']);
-                $company  = sanitize_text_field($_POST['company']);
-                $password = $_POST['password'];
+                // Use centralized security validation
+                $security_check = $this->validate_security('b2b_add_user', 'manage_options', 'POST');
+                if (is_wp_error($security_check)) {
+                    $error_message = '<div class="b2b-admin-card" style="color: #dc3545;"><span class="icon dashicons dashicons-no-alt"></span> ' . $security_check->get_error_message() . '</div>';
+                } else {
+                    $username = $this->sanitize_input($_POST['username'], 'text');
+                    $email = $this->sanitize_input($_POST['email'], 'email');
+                    $role = $this->sanitize_input($_POST['role'], 'text');
+                    $company = $this->sanitize_input($_POST['company'], 'text');
+                    $password = $_POST['password']; // Password will be hashed by WordPress
 
                 // Validate required fields
                 if (empty($username) || empty($email) || empty($role) || empty($password)) {
@@ -854,6 +984,7 @@
                         $success_message = '<div class="b2b-admin-card" style="color: #2196f3;"><span class="icon dashicons dashicons-yes-alt"></span> ' . __('B2B user created successfully!', 'b2b-commerce') . '</div>';
                     }
                 }
+                }
             }
 
             $content = '
@@ -874,7 +1005,7 @@
 <div class="b2b-admin-card">
     <div class="b2b-admin-card-title"><span class="icon dashicons dashicons-plus"></span>' . __('Create B2B User', 'b2b-commerce') . '</div>
     <form method="post" class="b2b-admin-form" id="b2b-add-user-form">
-        ' . wp_nonce_field('b2b_add_user', 'b2b_add_user_nonce', true, false) . '
+        ' . $this->get_nonce_field('b2b_add_user', 'b2b_add_user_nonce') . '
 
         <div class="b2b-admin-form-group">
             <label for="username">' . __('Username', 'b2b-commerce') . ' *</label>
@@ -976,13 +1107,13 @@
 
                     $content .= '
             <tr>
-                <td><strong><a href="' . admin_url('post.php?post=' . $order->get_id() . '&action=edit') . '">#' . $order->get_id() . '</a></strong></td>
+                <td><strong><a href="' . esc_url(admin_url('post.php?post=' . $order->get_id() . '&action=edit')) . '">#' . $order->get_id() . '</a></strong></td>
                 <td>' . esc_html($order->get_date_created()->date('Y-m-d H:i')) . '</td>
                 <td>' . esc_html($customer_name) . '</td>
                 <td><strong>' . esc_html(get_woocommerce_currency_symbol() . number_format($order->get_total(), 2)) . '</strong></td>
-                <td><span class="b2b-badge b2b-badge-' . $status_class . '">' . esc_html(wc_get_order_status_name($order->get_status())) . '</span></td>
+                <td><span class="b2b-badge b2b-badge-' . esc_attr($status_class) . '">' . esc_html(wc_get_order_status_name($order->get_status())) . '</span></td>
                 <td>
-                    <a href="' . admin_url('post.php?post=' . $order->get_id() . '&action=edit') . '" class="b2b-admin-btn" style="padding: 4px 8px; font-size: 0.8em;"><span class="icon dashicons dashicons-edit"></span>' . __('View', 'b2b-commerce') . '</a>
+                    <a href="' . esc_url(admin_url('post.php?post=' . $order->get_id() . '&action=edit')) . '" class="b2b-admin-btn" style="padding: 4px 8px; font-size: 0.8em;"><span class="icon dashicons dashicons-edit"></span>' . __('View', 'b2b-commerce') . '</a>
                 </td>
             </tr>';
                 }
@@ -991,7 +1122,7 @@
         </tbody>
     </table>
     <div style="margin-top: 15px; text-align: center;">
-        <a href="' . admin_url('edit.php?post_type=shop_order') . '" class="b2b-admin-btn">' . __('View All Orders', 'b2b-commerce') . '</a>
+        <a href="' . esc_url(admin_url('edit.php?post_type=shop_order')) . '" class="b2b-admin-btn">' . __('View All Orders', 'b2b-commerce') . '</a>
     </div>';
             } else {
                 $content .= '
@@ -1028,7 +1159,7 @@
             $table = $wpdb->prefix . 'b2b_pricing_rules';
 
             // Get existing rules
-            $rules = $wpdb->get_results($wpdb->prepare("SELECT * FROM %i ORDER BY id DESC", $table));
+            $rules = $wpdb->get_results("SELECT * FROM `" . $wpdb->_escape($table) . "` ORDER BY id DESC");
 
             // Handle form submission
             if (isset($_POST['b2b_pricing_nonce']) && wp_verify_nonce($_POST['b2b_pricing_nonce'], 'b2b_pricing_action')) {
@@ -1050,7 +1181,7 @@
 <div class="b2b-admin-card">
     <div class="b2b-admin-card-title"><span class="icon dashicons dashicons-plus"></span>Add Pricing Rule</div>
     <form method="post" class="b2b-admin-form">
-        ' . wp_nonce_field('b2b_pricing_action', 'b2b_pricing_nonce', true, false) . '
+        ' . $this->get_nonce_field('b2b_pricing_action', 'b2b_pricing_nonce') . '
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
             <div class="b2b-admin-form-group">
@@ -1275,7 +1406,7 @@ window.onclick = function(event) {
 
         <!-- Current Pricing Rules -->
         <div class="b2b-admin-card">
-            <div class="b2b-admin-card-title"><span class="icon dashicons dashicons-list-view"></span>' . __('Current Pricing Rules', 'b2b-commerce') . ' (' . count($rules) . ')</div>';
+            <div class="b2b-admin-card-title"><span class="icon dashicons dashicons-list-view"></span>' . __('Current Pricing Rules', 'b2b-commerce') . ' (' . esc_html(count($rules)) . ')</div>';
 
             if (empty($rules)) {
                 $content .= '<p style="text-align: center; color: #666; padding: 20px;">No pricing rules found. Add your first rule above.</p>';
@@ -1312,8 +1443,8 @@ window.onclick = function(event) {
                     <td>' . esc_html($value_display) . '</td>
                     <td>' . esc_html($rule->min_qty ?: 'Any') . '</td>
                     <td>
-                        <button type="button" class="b2b-admin-btn b2b-admin-btn-secondary" style="padding: 6px 12px; font-size: 0.9em; margin-right: 5px;" onclick="openEditModal(' . $rule->id . ', \'' . esc_js($rule->role) . '\', \'' . esc_js($rule->type) . '\', ' . $rule->price . ', ' . $rule->min_qty . ', ' . $rule->product_id . ')"><span class="icon dashicons dashicons-edit"></span>' . __('Edit', 'b2b-commerce') . '</button>
-                        <a href="' . admin_url('admin-post.php?action=b2b_delete_pricing_rule&id=' . $rule->id . '&_wpnonce=' . wp_create_nonce('b2b_delete_pricing_rule')) . '" class="b2b-admin-btn b2b-admin-btn-danger" style="padding: 6px 12px; font-size: 0.9em;" onclick="return confirm(\'' . esc_js(__('Delete this pricing rule?', 'b2b-commerce')) . '\')"><span class="icon dashicons dashicons-trash"></span>' . __('Delete', 'b2b-commerce') . '</a>
+                        <button type="button" class="b2b-admin-btn b2b-admin-btn-secondary" style="padding: 6px 12px; font-size: 0.9em; margin-right: 5px;" onclick="openEditModal(' . esc_js($rule->id) . ', \'' . esc_js($rule->role) . '\', \'' . esc_js($rule->type) . '\', ' . esc_js($rule->price) . ', ' . esc_js($rule->min_qty) . ', ' . esc_js($rule->product_id) . ')"><span class="icon dashicons dashicons-edit"></span>' . __('Edit', 'b2b-commerce') . '</button>
+                        <a href="' . esc_url(admin_url('admin-post.php?action=b2b_delete_pricing_rule&id=' . $rule->id . '&_wpnonce=' . wp_create_nonce('b2b_delete_pricing_rule'))) . '" class="b2b-admin-btn b2b-admin-btn-danger" style="padding: 6px 12px; font-size: 0.9em;" onclick="return confirm(\'' . esc_js(__('Delete this pricing rule?', 'b2b-commerce')) . '\')"><span class="icon dashicons dashicons-trash"></span>' . __('Delete', 'b2b-commerce') . '</a>
                     </td>
                 </tr>';
                 }
@@ -1360,14 +1491,10 @@ window.onclick = function(event) {
                     return;
                 }
 
-                // Verify nonce and permissions
-                if (! isset($_POST['b2b_pricing_nonce']) || ! wp_verify_nonce($_POST['b2b_pricing_nonce'], 'b2b_pricing_action')) {
-                    echo '<div class="notice notice-error"><p>' . esc_html__('Security check failed.', 'b2b-commerce') . '</p></div>';
-                    return;
-                }
-
-                if (! current_user_can('manage_options')) {
-                    echo '<div class="notice notice-error"><p>' . esc_html__('You do not have permission to perform this action.', 'b2b-commerce') . '</p></div>';
+                // Use centralized security validation
+                $security_check = $this->validate_security('b2b_pricing_action', 'manage_options', 'POST');
+                if (is_wp_error($security_check)) {
+                    echo '<div class="notice notice-error"><p>' . esc_html($security_check->get_error_message()) . '</p></div>';
                     return;
                 }
 
@@ -1376,22 +1503,29 @@ window.onclick = function(event) {
                 $errors          = [];
 
                 foreach ($required_fields as $field) {
-                    if (! isset($_POST[$field]) || empty($_POST[$field])) {
+                    $field_value = $this->sanitize_input($_POST[$field] ?? '', 'text');
+                    if (is_wp_error($field_value) || empty($field_value)) {
                         $errors[] = ucfirst(str_replace('_', ' ', $field)) . ' is required.';
                     }
                 }
 
                 if (! empty($errors)) {
-                    echo '<div class="notice notice-error"><p>' . implode('<br>', $errors) . '</p></div>';
+                    echo '<div class="notice notice-error"><p>' . esc_html(implode('<br>', $errors)) . '</p></div>';
                     return;
                 }
 
                 // Sanitize and validate data
-                $role       = sanitize_text_field($_POST['role']);
-                $type       = sanitize_text_field($_POST['type']);
-                $price      = floatval($_POST['price']);
-                $min_qty    = intval($_POST['min_qty']);
-                $product_id = intval($_POST['product_id'] ?? 0);
+                $role       = $this->sanitize_input($_POST['role'], 'text');
+                $type       = $this->sanitize_input($_POST['type'], 'text');
+                $price      = $this->sanitize_input($_POST['price'], 'float');
+                $min_qty    = $this->sanitize_input($_POST['min_qty'], 'int');
+                $product_id = $this->sanitize_input($_POST['product_id'] ?? 0, 'int');
+                
+                // Check for sanitization errors
+                if (is_wp_error($role) || is_wp_error($type) || is_wp_error($price) || is_wp_error($min_qty) || is_wp_error($product_id)) {
+                    echo '<div class="notice notice-error"><p>' . esc_html__('Invalid data provided.', 'b2b-commerce') . '</p></div>';
+                    return;
+                }
 
                 // Validate price
                 if ($price == 0 && $type === 'percentage') {
@@ -1508,7 +1642,7 @@ window.onclick = function(event) {
                 ];
 
                 update_option('b2b_email_templates', $email_templates);
-                $success_message = '<div class="b2b-admin-card" style="color: #4caf50; border-color: #4caf50; background: #f1f8e9;"><span class="icon dashicons dashicons-yes-alt"></span> ' . __('Email templates saved successfully!', 'b2b-commerce') . '</div>';
+                $success_message = '<div class="b2b-admin-card" style="color: #4caf50; border-color: #4caf50; background: #f1f8e9;"><span class="icon dashicons dashicons-yes-alt"></span> ' . esc_html(__('Email templates saved successfully!', 'b2b-commerce')) . '</div>';
             }
 
             $templates = get_option('b2b_email_templates', []);
@@ -1652,18 +1786,30 @@ Best regards,
 
             // Handle form submission
             if (isset($_POST['b2b_settings_nonce']) && wp_verify_nonce($_POST['b2b_settings_nonce'], 'b2b_settings')) {
-                $new_settings = [
-                    'company_required'     => isset($_POST['b2b_general_settings']['company_required']) ? 1 : 0,
-                    'auto_approve'         => isset($_POST['b2b_general_settings']['auto_approve']) ? 1 : 0,
-                    'require_tax_id'       => isset($_POST['b2b_general_settings']['require_tax_id']) ? 1 : 0,
-                    'enable_white_label'   => isset($_POST['b2b_general_settings']['enable_white_label']) ? 1 : 0,
-                    'enable_notifications' => isset($_POST['b2b_general_settings']['enable_notifications']) ? 1 : 0,
-                    'enable_custom_fields' => isset($_POST['b2b_general_settings']['enable_custom_fields']) ? 1 : 0,
-                ];
+                // Use centralized security validation
+                $security_check = $this->validate_security('b2b_settings', 'manage_options', 'POST');
+                if (is_wp_error($security_check)) {
+                    $error_message = '<div class="b2b-admin-card" style="color: #dc3545;"><span class="icon dashicons dashicons-no-alt"></span> ' . $security_check->get_error_message() . '</div>';
+                } else {
+                    // Sanitize settings data
+                    $settings_data = $this->sanitize_input($_POST['b2b_general_settings'] ?? [], 'text');
+                    if (is_wp_error($settings_data)) {
+                        $error_message = '<div class="b2b-admin-card" style="color: #dc3545;"><span class="icon dashicons dashicons-no-alt"></span> ' . __('Invalid settings data.', 'b2b-commerce') . '</div>';
+                    } else {
+                        $new_settings = [
+                            'company_required'     => isset($settings_data['company_required']) ? 1 : 0,
+                            'auto_approve'         => isset($settings_data['auto_approve']) ? 1 : 0,
+                            'require_tax_id'       => isset($settings_data['require_tax_id']) ? 1 : 0,
+                            'enable_white_label'   => isset($settings_data['enable_white_label']) ? 1 : 0,
+                            'enable_notifications' => isset($settings_data['enable_notifications']) ? 1 : 0,
+                            'enable_custom_fields' => isset($settings_data['enable_custom_fields']) ? 1 : 0,
+                        ];
 
-                update_option('b2b_general_settings', $new_settings);
-                $opts            = $new_settings;
-                $success_message = '<div class="b2b-admin-card" style="color: #2196f3; border-color: #2196f3; background: #f8f9fa;"><span class="icon dashicons dashicons-yes-alt"></span> ' . __('Settings saved successfully!', 'b2b-commerce') . '</div>';
+                        update_option('b2b_general_settings', $new_settings);
+                        $opts            = $new_settings;
+                        $success_message = '<div class="b2b-admin-card" style="color: #2196f3; border-color: #2196f3; background: #f8f9fa;"><span class="icon dashicons dashicons-yes-alt"></span> ' . __('Settings saved successfully!', 'b2b-commerce') . '</div>';
+                    }
+                }
             }
 
             $content = '
@@ -1681,7 +1827,7 @@ Best regards,
     <div class="b2b-admin-card-title"><span class="icon dashicons dashicons-admin-generic"></span>' . __('General Settings', 'b2b-commerce') . '</div>
 
     <form method="post" class="b2b-admin-form">
-        ' . wp_nonce_field('b2b_settings', 'b2b_settings_nonce', true, false) . '
+        ' . $this->get_nonce_field('b2b_settings', 'b2b_settings_nonce') . '
 
         <div class="b2b-admin-form-group">
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 24px; background: #f8f9fa; border-radius: 6px; margin-bottom: 15px;">
@@ -1919,7 +2065,17 @@ Best regards,
 
             // Show success message if quote was updated
             if (isset($_GET['updated']) && $_GET['updated'] == '1') {
-                $status      = sanitize_text_field($_GET['status'] ?? '');
+                $status = $this->sanitize_input($_GET['status'] ?? '', 'text');
+                if (is_wp_error($status)) {
+                    $status = 'unknown';
+                }
+                
+                // Validate against allowed values
+                $allowed_statuses = ['approved', 'declined', 'pending'];
+                if (!in_array($status, $allowed_statuses)) {
+                    $status = 'unknown';
+                }
+                
                 $status_text = ucfirst($status);
                 // translators: %s is the quote status (approved, rejected, etc.)
                 $content .= '<div class="notice notice-success is-dismissible"><p><strong>' . __('Success!', 'b2b-commerce') . '</strong> ' . sprintf(__('Quote has been %s.', 'b2b-commerce'), esc_html($status_text)) . '</p></div>';
@@ -1958,7 +2114,7 @@ Best regards,
                     $content .= '<td>' . esc_html($q['quantity'] ?? '') . '</td>';
                     $content .= '<td>' . esc_html($q['message'] ?? '') . '</td>';
                     $content .= '<td>' . esc_html(ucfirst($q['status'] ?? 'pending')) . '</td>';
-                    $content .= '<td><button type="button" class="b2b-admin-btn b2b-quote-action" data-index="' . $index . '" data-action="approve">' . __('Approve', 'b2b-commerce') . '</button> <button type="button" class="b2b-admin-btn b2b-admin-btn-danger b2b-quote-action" data-index="' . $index . '" data-action="decline">' . __('Decline', 'b2b-commerce') . '</button> <button type="button" class="b2b-admin-btn b2b-admin-btn-danger b2b-delete-quote" data-index="' . $index . '">' . __('Delete', 'b2b-commerce') . '</button></td>';
+                    $content .= '<td><button type="button" class="b2b-admin-btn b2b-quote-action" data-index="' . esc_attr($index) . '" data-action="approve">' . __('Approve', 'b2b-commerce') . '</button> <button type="button" class="b2b-admin-btn b2b-admin-btn-danger b2b-quote-action" data-index="' . esc_attr($index) . '" data-action="decline">' . __('Decline', 'b2b-commerce') . '</button> <button type="button" class="b2b-admin-btn b2b-admin-btn-danger b2b-delete-quote" data-index="' . esc_attr($index) . '">' . __('Delete', 'b2b-commerce') . '</button></td>';
                     $content .= '</tr>';
                 }
                 $content .= '</tbody></table>';
@@ -2042,7 +2198,7 @@ Best regards,
                         action: "b2b_update_quote_ajax",
                         quote_index: index,
                         status: action + "d", // approved or declined
-                        nonce: "' . wp_create_nonce('b2b_update_quote_ajax') . '"
+                        nonce: "' . $this->get_ajax_nonce('b2b_update_quote_ajax') . '"
                     },
                     success: function(response) {
                         if (response.success) {
@@ -2144,18 +2300,18 @@ Best regards,
                     $content .= '<td><span class="b2b-status-badge ' . $status_class . '">' . esc_html(ucfirst($status)) . '</span></td>';
                     $content .= '<td class="actions-cell">';
                     if (($inquiry['status'] ?? 'pending') === 'pending') {
-                        $content .= '<button type="button" class="b2b-respond-btn" data-index="' . $index . '">' . __('Respond', 'b2b-commerce') . '</button>';
-                        $content .= '<button type="button" class="b2b-close-btn" data-index="' . $index . '">' . __('Close', 'b2b-commerce') . '</button>';
+                        $content .= '<button type="button" class="b2b-respond-btn" data-index="' . esc_attr($index) . '">' . __('Respond', 'b2b-commerce') . '</button>';
+                        $content .= '<button type="button" class="b2b-close-btn" data-index="' . esc_attr($index) . '">' . __('Close', 'b2b-commerce') . '</button>';
                     } elseif (($inquiry['status'] ?? 'pending') === 'responded') {
-                        $content .= '<button type="button" class="b2b-view-response-btn" data-index="' . $index . '" data-response="' . esc_attr($inquiry['admin_response'] ?? '') . '" data-responded-date="' . esc_attr($inquiry['responded_date'] ?? '') . '" data-responded-by="' . esc_attr(get_userdata($inquiry['responded_by'] ?? 0)->display_name ?? 'Admin') . '">' . __('View Response', 'b2b-commerce') . '</button>';
-                        $content .= '<button type="button" class="b2b-close-btn" data-index="' . $index . '">' . __('Close', 'b2b-commerce') . '</button>';
+                        $content .= '<button type="button" class="b2b-view-response-btn" data-index="' . esc_attr($index) . '" data-response="' . esc_attr($inquiry['admin_response'] ?? '') . '" data-responded-date="' . esc_attr($inquiry['responded_date'] ?? '') . '" data-responded-by="' . esc_attr(get_userdata($inquiry['responded_by'] ?? 0)->display_name ?? 'Admin') . '">' . __('View Response', 'b2b-commerce') . '</button>';
+                        $content .= '<button type="button" class="b2b-close-btn" data-index="' . esc_attr($index) . '">' . __('Close', 'b2b-commerce') . '</button>';
                     } elseif (($inquiry['status'] ?? 'pending') === 'closed') {
-                        $content .= '<button type="button" class="b2b-view-response-btn" data-index="' . $index . '" data-response="' . esc_attr($inquiry['admin_response'] ?? '') . '" data-responded-date="' . esc_attr($inquiry['responded_date'] ?? '') . '" data-responded-by="' . esc_attr(get_userdata($inquiry['responded_by'] ?? 0)->display_name ?? 'Admin') . '">' . __('View Response', 'b2b-commerce') . '</button>';
+                        $content .= '<button type="button" class="b2b-view-response-btn" data-index="' . esc_attr($index) . '" data-response="' . esc_attr($inquiry['admin_response'] ?? '') . '" data-responded-date="' . esc_attr($inquiry['responded_date'] ?? '') . '" data-responded-by="' . esc_attr(get_userdata($inquiry['responded_by'] ?? 0)->display_name ?? 'Admin') . '">' . __('View Response', 'b2b-commerce') . '</button>';
                         $content .= '<span class="b2b-status-badge b2b-status-closed">' . __('Closed', 'b2b-commerce') . '</span>';
                     }
 
                     // Add delete button for all inquiries
-                    $content .= '<button type="button" class="b2b-delete-btn" data-index="' . $index . '">' . __('Delete', 'b2b-commerce') . '</button>';
+                    $content .= '<button type="button" class="b2b-delete-btn" data-index="' . esc_attr($index) . '">' . __('Delete', 'b2b-commerce') . '</button>';
                     $content .= '</td>';
                     $content .= '</tr>';
                 }
@@ -2262,19 +2418,24 @@ Best regards,
         public function handle_update_quote()
         {
             try {
-                if (! current_user_can('manage_options')) {
-                    wp_die(__('Unauthorized access.', 'b2b-commerce'));
+                // Use centralized security validation for GET requests
+                $security_check = $this->validate_security('b2b_update_quote', 'manage_options', 'GET');
+                if (is_wp_error($security_check)) {
+                    wp_die($security_check->get_error_message());
                 }
 
-                $index  = isset($_GET['quote']) ? intval($_GET['quote']) : -1;
-                $status = sanitize_text_field($_GET['status'] ?? '');
+                $index = $this->sanitize_input($_GET['quote'] ?? -1, 'int', ['min' => 0]);
+                if (is_wp_error($index)) {
+                    wp_die(__('Invalid quote index.', 'b2b-commerce'));
+                }
 
-                if ($index < 0 || ! in_array($status, ['approved', 'declined'], true)) {
+                $status = $this->sanitize_input($_GET['status'] ?? '', 'text');
+                if (is_wp_error($status)) {
+                    wp_die(__('Invalid status.', 'b2b-commerce'));
+                }
+
+                if (! in_array($status, ['approved', 'declined'], true)) {
                     wp_die(__('Invalid request parameters.', 'b2b-commerce'));
-                }
-
-                if (! wp_verify_nonce($_GET['_wpnonce'] ?? '', 'b2b_update_quote_' . $index)) {
-                    wp_die(__('Security check failed.', 'b2b-commerce'));
                 }
 
                 $quotes = get_option('b2b_quote_requests', []);
@@ -2308,20 +2469,29 @@ Best regards,
         public function handle_update_quote_ajax()
         {
             try {
-                if (! current_user_can('manage_options')) {
-                    wp_send_json_error(__('Unauthorized access.', 'b2b-commerce'));
+                // Use centralized security validation
+                $security_check = $this->validate_security('b2b_update_quote_ajax', 'manage_options', 'POST');
+                if (is_wp_error($security_check)) {
+                    wp_send_json_error($security_check->get_error_message());
+                    return;
                 }
 
                 // Validate and sanitize input
-                $index  = isset($_POST['quote_index']) ? absint($_POST['quote_index']) : -1;
-                $status = sanitize_text_field($_POST['status'] ?? '');
-
-                if ($index < 0 || ! in_array($status, ['approved', 'declined'], true)) {
-                    wp_send_json_error(__('Invalid request parameters.', 'b2b-commerce'));
+                $index = $this->sanitize_input($_POST['quote_index'] ?? -1, 'int', ['min' => 0]);
+                if (is_wp_error($index)) {
+                    wp_send_json_error(__('Invalid quote index.', 'b2b-commerce'));
+                    return;
                 }
 
-                if (! wp_verify_nonce($_POST['nonce'] ?? '', 'b2b_update_quote_ajax')) {
-                    wp_send_json_error(__('Security check failed.', 'b2b-commerce'));
+                $status = $this->sanitize_input($_POST['status'] ?? '', 'text');
+                if (is_wp_error($status)) {
+                    wp_send_json_error(__('Invalid status.', 'b2b-commerce'));
+                    return;
+                }
+
+                if (! in_array($status, ['approved', 'declined'], true)) {
+                    wp_send_json_error(__('Invalid request parameters.', 'b2b-commerce'));
+                    return;
                 }
 
                 $quotes = get_option('b2b_quote_requests', []);
@@ -2357,15 +2527,26 @@ Best regards,
         // Handle inquiry status updates
         public function handle_update_inquiry()
         {
-            if (! current_user_can('manage_options')) {
-                wp_die(__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+            // Use centralized security validation
+            $security_check = $this->validate_security('b2b_update_inquiry', 'manage_options', 'POST');
+            if (is_wp_error($security_check)) {
+                wp_die($security_check->get_error_message());
             }
 
-            check_admin_referer('b2b_update_inquiry');
+            $inquiry_index = $this->sanitize_input($_POST['inquiry_index'], 'int', ['min' => 0]);
+            if (is_wp_error($inquiry_index)) {
+                wp_die(__('Invalid inquiry index.', 'b2b-commerce'));
+            }
 
-            $inquiry_index  = intval($_POST['inquiry_index']);
-            $new_status     = sanitize_text_field($_POST['status']);
-            $admin_response = sanitize_textarea_field($_POST['admin_response']);
+            $new_status = $this->sanitize_input($_POST['status'], 'text');
+            if (is_wp_error($new_status)) {
+                wp_die(__('Invalid status.', 'b2b-commerce'));
+            }
+
+            $admin_response = $this->sanitize_input($_POST['admin_response'], 'textarea');
+            if (is_wp_error($admin_response)) {
+                wp_die(__('Invalid admin response.', 'b2b-commerce'));
+            }
 
             $inquiries = get_option('b2b_product_inquiries', []);
 
@@ -2393,13 +2574,16 @@ Best regards,
         // Handle inquiry deletion
         public function handle_delete_inquiry()
         {
-            if (! current_user_can('manage_options')) {
-                wp_die(__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+            // Use centralized security validation
+            $security_check = $this->validate_security('b2b_delete_inquiry', 'manage_options', 'POST');
+            if (is_wp_error($security_check)) {
+                wp_die($security_check->get_error_message());
             }
 
-            check_admin_referer('b2b_delete_inquiry');
-
-            $inquiry_index = intval($_POST['inquiry_index']);
+            $inquiry_index = $this->sanitize_input($_POST['inquiry_index'], 'int', ['min' => 0]);
+            if (is_wp_error($inquiry_index)) {
+                wp_die(__('Invalid inquiry index.', 'b2b-commerce'));
+            }
             $inquiries     = get_option('b2b_product_inquiries', []);
 
             if (isset($inquiries[$inquiry_index])) {
@@ -2420,11 +2604,11 @@ Best regards,
         // Handle quote data migration
         public function handle_migrate_quotes()
         {
-            if (! current_user_can('manage_options')) {
-                wp_die(__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+            // Use centralized security validation
+            $security_check = $this->validate_security('b2b_migrate_quotes', 'manage_options', 'POST');
+            if (is_wp_error($security_check)) {
+                wp_die($security_check->get_error_message());
             }
-
-            check_admin_referer('b2b_migrate_quotes');
 
             $quotes         = get_option('b2b_quote_requests', []);
             $migrated_count = 0;
@@ -2520,7 +2704,7 @@ Best regards,
             $pricing_rules_count = 0;
             $table               = $wpdb->prefix . 'b2b_pricing_rules';
             if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table)) === $table) {
-                $pricing_rules_count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM %i", $table));
+                $pricing_rules_count = $wpdb->get_var("SELECT COUNT(*) FROM `" . $wpdb->_escape($table) . "`");
             }
 
             $content = '
@@ -2921,16 +3105,36 @@ Best regards,
 
         private function handle_import_data()
         {
-            if (! wp_verify_nonce($_POST['b2b_import_nonce'], 'b2b_import_export')) {
-                wp_die(__('Security check failed.', 'b2b-commerce'));
+            // Use centralized security validation
+            $security_check = $this->validate_security('b2b_import_export', 'manage_options', 'POST');
+            if (is_wp_error($security_check)) {
+                wp_die($security_check->get_error_message());
             }
 
             if (! isset($_FILES['import_file']) || $_FILES['import_file']['error'] !== UPLOAD_ERR_OK) {
                 wp_die(__('File upload failed.', 'b2b-commerce'));
             }
 
-            $import_type = sanitize_text_field($_POST['import_type']);
-            $file        = $_FILES['import_file']['tmp_name'];
+            $import_type = $this->sanitize_input($_POST['import_type'], 'text');
+            if (is_wp_error($import_type)) {
+                wp_die(__('Invalid import type.', 'b2b-commerce'));
+            }
+
+            // Use WordPress file handling for security
+            $upload_overrides = [
+                'test_form' => false,
+                'mimes' => [
+                    'csv' => 'text/csv',
+                    'txt' => 'text/plain'
+                ]
+            ];
+
+            $uploaded_file = wp_handle_upload($_FILES['import_file'], $upload_overrides);
+            if (isset($uploaded_file['error'])) {
+                wp_die($uploaded_file['error']);
+            }
+
+            $file = $uploaded_file['file'];
 
             switch ($import_type) {
                 case 'users':
@@ -3151,7 +3355,7 @@ Best regards,
             <div class="b2b-import-export-section">
                 <h3><?php echo __('Import Data', 'b2b-commerce'); ?></h3>
                 <form method="post" enctype="multipart/form-data">
-                    <?php wp_nonce_field('b2b_import_export', 'b2b_import_nonce'); ?>
+                    <?php echo $this->get_nonce_field('b2b_import_export', 'b2b_import_nonce'); ?>
                     <p>
                         <label><?php echo __('Select File Type:', 'b2b-commerce'); ?></label>
                         <select name="import_type">
@@ -3172,8 +3376,8 @@ Best regards,
             <div class="b2b-import-export-section">
                 <h3><?php echo __('Template Downloads', 'b2b-commerce'); ?></h3>
                 <p><?php echo __('Download CSV templates for importing data:', 'b2b-commerce'); ?></p>
-                <a href="<?php echo admin_url('admin-ajax.php?action=b2b_download_template&type=users&nonce=' . wp_create_nonce('b2b_template_nonce')); ?>" class="button"><?php echo __('Users Template', 'b2b-commerce'); ?></a>
-                <a href="<?php echo admin_url('admin-ajax.php?action=b2b_download_template&type=pricing&nonce=' . wp_create_nonce('b2b_template_nonce')); ?>" class="button"><?php echo __('Pricing Template', 'b2b-commerce'); ?></a>
+                <a href="<?php echo admin_url('admin-ajax.php?action=b2b_download_template&type=users&nonce=' . $this->get_ajax_nonce('b2b_template_nonce')); ?>" class="button"><?php echo __('Users Template', 'b2b-commerce'); ?></a>
+                <a href="<?php echo admin_url('admin-ajax.php?action=b2b_download_template&type=pricing&nonce=' . $this->get_ajax_nonce('b2b_template_nonce')); ?>" class="button"><?php echo __('Pricing Template', 'b2b-commerce'); ?></a>
             </div>
         </div>
 
@@ -3182,7 +3386,7 @@ Best regards,
             jQuery.post(ajaxurl, {
                 action: 'b2b_export_data',
                 type: type,
-                nonce: '<?php echo wp_create_nonce("b2b_ajax_nonce"); ?>'
+                nonce: '<?php echo $this->get_ajax_nonce("b2b_ajax_nonce"); ?>'
             }, function(response) {
                 if (response.success) {
                     // Create and download CSV file
@@ -3274,7 +3478,7 @@ Best regards,
                 $.post(ajaxurl, {
                     action: "b2b_dismiss_notification",
                     notification: notification,
-                    nonce: "' . wp_create_nonce('b2b_dismiss_notification') . '"
+                    nonce: "' . $this->get_ajax_nonce('b2b_dismiss_notification') . '"
                 });
             });
         });
@@ -3284,15 +3488,19 @@ Best regards,
                 // Dismiss notification
                 public function dismiss_notification()
                 {
-                    if (! current_user_can('manage_options')) {
-                        wp_die(__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+                    // Use centralized security validation
+                    $security_check = $this->validate_security('b2b_dismiss_notification', 'manage_options', 'POST');
+                    if (is_wp_error($security_check)) {
+                        wp_send_json_error($security_check->get_error_message());
+                        return;
                     }
 
-                    if (! wp_verify_nonce($_POST['nonce'], 'b2b_dismiss_notification')) {
-                        wp_die(__('Security check failed.', 'b2b-commerce'));
+                    $notification = $this->sanitize_input($_POST['notification'], 'text');
+                    if (is_wp_error($notification)) {
+                        wp_send_json_error($notification->get_error_message());
+                        return;
                     }
 
-                    $notification = sanitize_text_field($_POST['notification']);
                     $dismissed    = get_option('b2b_dismissed_notifications', []);
                     $dismissed[]  = $notification;
                     update_option('b2b_dismissed_notifications', array_unique($dismissed));
@@ -3390,5 +3598,83 @@ Best regards,
                     $headers = ['Content-Type: text/plain; charset=UTF-8'];
 
                     return wp_mail($quote['user_email'], $subject, $message, $headers);
+                }
+
+        /**
+         * Handle email template saving with proper security validation
+         */
+        public function handle_save_email_template() {
+            // Security: Verify nonce and user permissions
+            if (!isset($_POST['b2b_email_nonce']) || !wp_verify_nonce($_POST['b2b_email_nonce'], 'b2b_save_email_template')) {
+                wp_die(__('Security check failed.', 'b2b-commerce'));
             }
+
+            // Security: Check user permissions
+            if (!current_user_can('manage_options')) {
+                wp_die(__('You do not have sufficient permissions to perform this action.', 'b2b-commerce'));
+            }
+
+            // Sanitize and validate input data
+            $template_id = intval($_POST['template_id'] ?? 0);
+            $template_name = sanitize_text_field($_POST['template_name'] ?? '');
+            $subject = sanitize_text_field($_POST['subject'] ?? '');
+            $message = wp_kses_post($_POST['message'] ?? '');
+            $trigger = sanitize_text_field($_POST['trigger'] ?? '');
+
+            // Validate required fields
+            $errors = [];
+            if (empty($template_name)) {
+                $errors[] = __('Template name is required.', 'b2b-commerce');
+            }
+            if (empty($subject)) {
+                $errors[] = __('Subject is required.', 'b2b-commerce');
+            }
+            if (empty($message)) {
+                $errors[] = __('Message is required.', 'b2b-commerce');
+            }
+            if (empty($trigger)) {
+                $errors[] = __('Trigger is required.', 'b2b-commerce');
+            }
+
+            // Validate trigger value
+            $valid_triggers = ['user_approved', 'user_rejected', 'welcome_email', 'order_confirmation'];
+            if (!in_array($trigger, $valid_triggers)) {
+                $errors[] = __('Invalid trigger selected.', 'b2b-commerce');
+            }
+
+            // If there are validation errors, redirect back with error message
+            if (!empty($errors)) {
+                $error_message = implode(' ', $errors);
+                wp_redirect(admin_url('admin.php?page=b2b-emails&error=' . urlencode($error_message)));
+                exit;
+            }
+
+            // Prepare template data
+            $template_data = [
+                'name' => $template_name,
+                'subject' => $subject,
+                'message' => $message,
+                'trigger' => $trigger,
+                'updated_at' => current_time('mysql')
+            ];
+
+            // Save template
+            if ($template_id > 0) {
+                // Update existing template
+                update_option("b2b_email_template_$template_id", $template_data);
+                $success_message = __('Email template updated successfully.', 'b2b-commerce');
+            } else {
+                // Find next available ID
+                $next_id = 1;
+                while (get_option("b2b_email_template_$next_id")) {
+                    $next_id++;
+                }
+                update_option("b2b_email_template_$next_id", $template_data);
+                $success_message = __('Email template created successfully.', 'b2b-commerce');
+            }
+
+            // Redirect back with success message
+            wp_redirect(admin_url('admin.php?page=b2b-emails&success=' . urlencode($success_message)));
+            exit;
         }
+    }

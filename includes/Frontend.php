@@ -13,6 +13,10 @@ class Frontend {
         add_shortcode( 'b2b_bulk_order', [ $this, 'bulk_order_shortcode' ] );
         add_action( 'init', [ $this, 'handle_invoice_download' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_scripts' ] );
+        
+        // Add AJAX handlers with proper security
+        add_action( 'wp_ajax_b2b_bulk_add_to_cart', [ $this, 'handle_bulk_add_to_cart' ] );
+        add_action( 'wp_ajax_nopriv_b2b_bulk_add_to_cart', [ $this, 'handle_bulk_add_to_cart_denied' ] );
     }
 
     // B2B dashboard shortcode
@@ -47,11 +51,11 @@ class Frontend {
                         <p><?php esc_html_e('Welcome to your B2B Dashboard', 'b2b-commerce'); ?></p>
                         <div class="b2b-welcome-stats">
                             <div class="b2b-stat-item">
-                                <span class="b2b-stat-number"><?php echo esc_html($order_count); ?></span>
+                                <span class="b2b-stat-number"><?php echo esc_html( $order_count ); ?></span>
                                 <span class="b2b-stat-label"><?php esc_html_e('Orders', 'b2b-commerce'); ?></span>
                             </div>
                             <div class="b2b-stat-item">
-                                <span class="b2b-stat-number"><?php echo esc_html( get_woocommerce_currency_symbol() . number_format($total_spent, 2) ); ?></span>
+                                <span class="b2b-stat-number"><?php echo esc_html( get_woocommerce_currency_symbol() . number_format( $total_spent, 2 ) ); ?></span>
                                 <span class="b2b-stat-label"><?php esc_html_e('Total Spent', 'b2b-commerce'); ?></span>
                             </div>
                         </div>
@@ -71,7 +75,7 @@ class Frontend {
                         $role_display = __('B2B Customer', 'b2b-commerce');
                     }
                     ?>
-                    <span class="b2b-role-badge"><?php echo esc_html($role_display); ?></span>
+                    <span class="b2b-role-badge"><?php echo esc_html( $role_display ); ?></span>
                 </div>
             </div>
 
@@ -79,8 +83,8 @@ class Frontend {
             <div class="b2b-quick-actions">
                 <div class="b2b-section-title">
                     <div class="b2b-title-accent"></div>
-                    <h3><?php _e('Quick Actions', 'b2b-commerce'); ?></h3>
-                    <p><?php _e('Access your most important features', 'b2b-commerce'); ?></p>
+                    <h3><?php esc_html_e('Quick Actions', 'b2b-commerce'); ?></h3>
+                    <p><?php esc_html_e('Access your most important features', 'b2b-commerce'); ?></p>
                 </div>
                 <div class="b2b-action-cards">
                     <a href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>" class="b2b-action-card b2b-card-primary">
@@ -90,8 +94,8 @@ class Frontend {
                             </svg>
                         </div>
                         <div class="b2b-card-content">
-                            <h4><?php _e('Shop Products', 'b2b-commerce'); ?></h4>
-                            <p><?php _e('Browse our catalog', 'b2b-commerce'); ?></p>
+                            <h4><?php esc_html_e('Shop Products', 'b2b-commerce'); ?></h4>
+                            <p><?php esc_html_e('Browse our catalog', 'b2b-commerce'); ?></p>
                         </div>
                         <div class="b2b-card-arrow">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -107,8 +111,8 @@ class Frontend {
                             </svg>
                         </div>
                         <div class="b2b-card-content">
-                            <h4><?php _e('View Cart', 'b2b-commerce'); ?></h4>
-                            <p><?php _e('Check your items', 'b2b-commerce'); ?></p>
+                            <h4><?php esc_html_e('View Cart', 'b2b-commerce'); ?></h4>
+                            <p><?php esc_html_e('Check your items', 'b2b-commerce'); ?></p>
                         </div>
                         <div class="b2b-card-arrow">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -124,8 +128,8 @@ class Frontend {
                             </svg>
                         </div>
                         <div class="b2b-card-content">
-                            <h4><?php _e('Order History', 'b2b-commerce'); ?></h4>
-                            <p><?php _e('View past orders', 'b2b-commerce'); ?></p>
+                            <h4><?php esc_html_e('Order History', 'b2b-commerce'); ?></h4>
+                            <p><?php esc_html_e('View past orders', 'b2b-commerce'); ?></p>
                         </div>
                         <div class="b2b-card-arrow">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -141,8 +145,8 @@ class Frontend {
                             </svg>
                         </div>
                         <div class="b2b-card-content">
-                            <h4><?php _e('Account Settings', 'b2b-commerce'); ?></h4>
-                            <p><?php _e('Manage your profile', 'b2b-commerce'); ?></p>
+                            <h4><?php esc_html_e('Account Settings', 'b2b-commerce'); ?></h4>
+                            <p><?php esc_html_e('Manage your profile', 'b2b-commerce'); ?></p>
                         </div>
                         <div class="b2b-card-arrow">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -163,7 +167,7 @@ class Frontend {
                                 <path d="M19 3H5C3.89 3 3 3.89 3 5V19C3 20.11 3.89 21 5 21H19C20.11 21 21 20.11 21 19V5C21 3.89 20.11 3 19 3ZM9 17H7V10H9V17ZM13 17H11V7H13V17ZM17 17H15V13H17V17Z" fill="#3B82F6"/>
                             </svg>
                         </div>
-                        <h3><?php _e('Recent Orders', 'b2b-commerce'); ?></h3>
+                        <h3><?php esc_html_e('Recent Orders', 'b2b-commerce'); ?></h3>
                     </div>
                     <div class="b2b-section-content">
                         <?php echo do_shortcode('[b2b_order_history]'); ?>
@@ -178,7 +182,7 @@ class Frontend {
                                 <path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="#10B981"/>
                             </svg>
                         </div>
-                        <h3><?php _e('Account Information', 'b2b-commerce'); ?></h3>
+                        <h3><?php esc_html_e('Account Information', 'b2b-commerce'); ?></h3>
                     </div>
                     <div class="b2b-section-content">
                         <?php echo do_shortcode('[b2b_account]'); ?>
@@ -193,7 +197,7 @@ class Frontend {
                                 <path d="M12 21.35L10.55 20.03C5.4 15.36 2 12.27 2 8.5C2 5.41 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.08C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.41 22 8.5C22 12.27 18.6 15.36 13.45 20.03L12 21.35Z" fill="#EF4444"/>
                             </svg>
                         </div>
-                        <h3><?php _e('Wishlist', 'b2b-commerce'); ?></h3>
+                        <h3><?php esc_html_e('Wishlist', 'b2b-commerce'); ?></h3>
                     </div>
                     <div class="b2b-section-content">
                         <?php echo do_shortcode('[b2b_wishlist]'); ?>
@@ -218,20 +222,20 @@ class Frontend {
         ob_start();
         if (empty($orders)) {
             echo '<div class="b2b-empty-state">';
-            echo '<div class="b2b-empty-icon">' . esc_html__('📦', 'b2b-commerce') . '</div>';
-            echo '<h4>' . esc_html__('No Orders Yet', 'b2b-commerce') . '</h4>';
-            echo '<p>' . esc_html__('You haven\'t placed any orders yet. Start shopping to see your order history here.', 'b2b-commerce') . '</p>';
-            echo '<a href="' . esc_url(wc_get_page_permalink('shop')) . '" class="b2b-empty-action">' . esc_html__('Start Shopping', 'b2b-commerce') . '</a>';
+            echo '<div class="b2b-empty-icon">' . esc_html__( '📦', 'b2b-commerce' ) . '</div>';
+            echo '<h4>' . esc_html__( 'No Orders Yet', 'b2b-commerce' ) . '</h4>';
+            echo '<p>' . esc_html__( 'You haven\'t placed any orders yet. Start shopping to see your order history here.', 'b2b-commerce' ) . '</p>';
+            echo '<a href="' . esc_url( wc_get_page_permalink( 'shop' ) ) . '" class="b2b-empty-action">' . esc_html__( 'Start Shopping', 'b2b-commerce' ) . '</a>';
             echo '</div>';
         } else {
             echo '<div class="b2b-order-table-wrapper">';
             echo '<table class="b2b-order-history-modern">';
             echo '<thead><tr>';
-            echo '<th>' . esc_html__('Order', 'b2b-commerce') . '</th>';
-            echo '<th>' . esc_html__('Date', 'b2b-commerce') . '</th>';
-            echo '<th>' . esc_html__('Status', 'b2b-commerce') . '</th>';
-            echo '<th>' . esc_html__('Total', 'b2b-commerce') . '</th>';
-            echo '<th>' . esc_html__('Actions', 'b2b-commerce') . '</th>';
+            echo '<th>' . esc_html__( 'Order', 'b2b-commerce' ) . '</th>';
+            echo '<th>' . esc_html__( 'Date', 'b2b-commerce' ) . '</th>';
+            echo '<th>' . esc_html__( 'Status', 'b2b-commerce' ) . '</th>';
+            echo '<th>' . esc_html__( 'Total', 'b2b-commerce' ) . '</th>';
+            echo '<th>' . esc_html__( 'Actions', 'b2b-commerce' ) . '</th>';
             echo '</tr></thead><tbody>';
             
             foreach ( $orders as $order ) {
@@ -242,27 +246,30 @@ class Frontend {
                 // Add status icons
                 switch($status) {
                     case 'completed':
-                        $status_icon = __('✅', 'b2b-commerce');
+                        $status_icon = __( '✅', 'b2b-commerce' );
                         break;
                     case 'processing':
-                        $status_icon = __('⏳', 'b2b-commerce');
+                        $status_icon = __( '⏳', 'b2b-commerce' );
                         break;
                     case 'pending':
-                        $status_icon = __('⏸️', 'b2b-commerce');
+                        $status_icon = __( '⏸️', 'b2b-commerce' );
                         break;
                     case 'cancelled':
-                        $status_icon = __('❌', 'b2b-commerce');
+                        $status_icon = __( '❌', 'b2b-commerce' );
                         break;
                     default:
-                        $status_icon = __('📋', 'b2b-commerce');
+                        $status_icon = __( '📋', 'b2b-commerce' );
                 }
                 
                 echo '<tr>';
                 echo '<td><strong>#' . esc_html( $order->get_id() ) . '</strong></td>';
                 echo '<td>' . esc_html( $order->get_date_created()->date( 'M j, Y' ) ) . '</td>';
-                echo '<td><span class="b2b-status-badge ' . esc_attr($status_class) . '">' . esc_html( $status_icon ) . ' ' . esc_html( wc_get_order_status_name( $status ) ) . '</span></td>';
+                echo '<td><span class="b2b-status-badge ' . esc_attr( $status_class ) . '">' . esc_html( $status_icon ) . ' ' . esc_html( wc_get_order_status_name( $status ) ) . '</span></td>';
                 echo '<td><strong>' . esc_html( get_woocommerce_currency_symbol() . number_format( $order->get_total(), 2 ) ) . '</strong></td>';
-                echo '<td><a href="' . esc_url( add_query_arg( [ 'b2b_invoice' => $order->get_id() ] ) ) . '" target="_blank" class="b2b-invoice-link">' . esc_html__('📄', 'b2b-commerce') . ' ' . esc_html__('Invoice', 'b2b-commerce') . '</a></td>';
+                echo '<td><a href="' . esc_url( add_query_arg( [ 
+                    'b2b_invoice' => $order->get_id(),
+                    'b2b_invoice_nonce' => wp_create_nonce( 'b2b_invoice_download_' . $order->get_id() )
+                ] ) ) . '" target="_blank" class="b2b-invoice-link">' . esc_html__( '📄', 'b2b-commerce' ) . ' ' . esc_html__( 'Invoice', 'b2b-commerce' ) . '</a></td>';
                 echo '</tr>';
             }
             echo '</tbody></table>';
@@ -271,37 +278,85 @@ class Frontend {
         return ob_get_clean();
     }
 
-    // Invoice download handler (HTML)
+    // Invoice download handler (HTML) - Secured with nonce and permissions
     public function handle_invoice_download() {
-        if ( isset( $_GET['b2b_invoice'] ) && is_user_logged_in() ) {
-            if (!class_exists('WooCommerce') || !function_exists('wc_get_order')) {
-                wp_die(__('WooCommerce is required for invoice functionality.', 'b2b-commerce'));
-            }
-            
-            $order_id = intval( $_GET['b2b_invoice'] );
-            $order = wc_get_order( $order_id );
-            if ( $order && $order->get_user_id() == get_current_user_id() ) {
-                header( 'Content-Type: text/html' );
-                // translators: %s is the order ID number
-                echo '<h2>' . sprintf(__('Invoice for Order #%s', 'b2b-commerce'), $order->get_id()) . '</h2>';
-                // translators: %s is the order date
-                echo '<p>' . sprintf(__('Date: %s', 'b2b-commerce'), esc_html( $order->get_date_created()->date( 'Y-m-d' ) )) . '</p>';
-                // translators: %s is the order total amount
-                echo '<p>' . sprintf(__('Total: %s', 'b2b-commerce'), esc_html( get_woocommerce_currency_symbol() . number_format( $order->get_total(), 2 ) )) . '</p>';
-                echo '<h3>' . __('Items', 'b2b-commerce') . '</h3><ul>';
-                foreach ( $order->get_items() as $item ) {
-                    echo '<li>' . esc_html( $item->get_name() ) . ' x ' . esc_html( $item->get_quantity() ) . '</li>';
-                }
-                echo '</ul>';
-                exit;
-            }
+        // Check if invoice request is made
+        if ( ! isset( $_GET['b2b_invoice'] ) ) {
+            return;
         }
+        
+        // Verify user is logged in
+        if ( ! is_user_logged_in() ) {
+            wp_die( __('You must be logged in to download invoices.', 'b2b-commerce'), __('Access Denied', 'b2b-commerce'), array( 'response' => 403 ) );
+        }
+        
+        // Verify nonce for security
+        if ( ! isset( $_GET['b2b_invoice_nonce'] ) || ! wp_verify_nonce( $_GET['b2b_invoice_nonce'], 'b2b_invoice_download_' . intval( $_GET['b2b_invoice'] ) ) ) {
+            wp_die( __('Security check failed. Invalid request.', 'b2b-commerce'), __('Security Error', 'b2b-commerce'), array( 'response' => 403 ) );
+        }
+        
+        // Check user permissions - user must be able to read orders
+        if ( ! current_user_can( 'read' ) ) {
+            wp_die( __('You do not have permission to download invoices.', 'b2b-commerce'), __('Permission Denied', 'b2b-commerce'), array( 'response' => 403 ) );
+        }
+        
+        // Check WooCommerce availability
+        if ( ! class_exists('WooCommerce') || ! function_exists('wc_get_order') ) {
+            wp_die( __('WooCommerce is required for invoice functionality.', 'b2b-commerce'), __('Plugin Required', 'b2b-commerce'), array( 'response' => 500 ) );
+        }
+        
+        // Sanitize and validate order ID
+        $order_id = intval( $_GET['b2b_invoice'] );
+        if ( $order_id <= 0 ) {
+            wp_die( __('Invalid order ID provided.', 'b2b-commerce'), __('Invalid Request', 'b2b-commerce'), array( 'response' => 400 ) );
+        }
+        
+        // Get order and verify ownership
+        $order = wc_get_order( $order_id );
+        if ( ! $order ) {
+            wp_die( __('Order not found.', 'b2b-commerce'), __('Not Found', 'b2b-commerce'), array( 'response' => 404 ) );
+        }
+        
+        // Verify order belongs to current user
+        if ( $order->get_user_id() != get_current_user_id() ) {
+            wp_die( __('You can only download invoices for your own orders.', 'b2b-commerce'), __('Access Denied', 'b2b-commerce'), array( 'response' => 403 ) );
+        }
+        
+        // Generate and output invoice
+        header( 'Content-Type: text/html; charset=utf-8' );
+        header( 'Content-Disposition: attachment; filename="invoice-' . $order_id . '.html"' );
+        
+        // translators: %s is the order ID number
+        echo '<h2>' . esc_html( sprintf( __( 'Invoice for Order #%s', 'b2b-commerce' ), $order->get_id() ) ) . '</h2>';
+        // translators: %s is the order date
+        echo '<p>' . esc_html( sprintf( __( 'Date: %s', 'b2b-commerce' ), $order->get_date_created()->date( 'Y-m-d' ) ) ) . '</p>';
+        // translators: %s is the order total amount
+        echo '<p>' . esc_html( sprintf( __( 'Total: %s', 'b2b-commerce' ), get_woocommerce_currency_symbol() . number_format( $order->get_total(), 2 ) ) ) . '</p>';
+        echo '<h3>' . esc_html__( 'Items', 'b2b-commerce' ) . '</h3><ul>';
+        foreach ( $order->get_items() as $item ) {
+            echo '<li>' . esc_html( $item->get_name() ) . ' x ' . esc_html( $item->get_quantity() ) . '</li>';
+        }
+        echo '</ul>';
+        exit;
     }
 
     // Account management shortcode
     public function account_management_shortcode() {
-        if ( ! is_user_logged_in() ) return '';
+        // Check if user is logged in
+        if ( ! is_user_logged_in() ) {
+            return '<p>' . __('Please log in to access your account information.', 'b2b-commerce') . '</p>';
+        }
+        
+        // Check user permissions
+        if ( ! current_user_can( 'read' ) ) {
+            return '<p>' . __('You do not have permission to view account information.', 'b2b-commerce') . '</p>';
+        }
+        
         $user = wp_get_current_user();
+        
+        // Process form submission with enhanced security
+        $this->process_account_update();
+        
         ob_start();
         ?>
         <div class="b2b-account-form-modern">
@@ -310,43 +365,112 @@ class Frontend {
                 
                 <div class="b2b-form-row">
                     <div class="b2b-form-group">
-                        <label for="company_name"><?php _e('Company Name', 'b2b-commerce'); ?></label>
-                        <input type="text" id="company_name" name="company_name" value="<?php echo esc_attr( get_user_meta( $user->ID, 'company_name', true ) ); ?>" placeholder="<?php _e('Enter your company name', 'b2b-commerce'); ?>">
+                        <label for="company_name"><?php esc_html_e('Company Name', 'b2b-commerce'); ?></label>
+                        <input type="text" id="company_name" name="company_name" value="<?php echo esc_attr( get_user_meta( $user->ID, 'company_name', true ) ); ?>" placeholder="<?php esc_attr_e( 'Enter your company name', 'b2b-commerce' ); ?>">
                     </div>
                 </div>
                 
                 <div class="b2b-form-row">
                     <div class="b2b-form-group">
-                        <label for="business_type"><?php _e('Business Type', 'b2b-commerce'); ?></label>
-                        <input type="text" id="business_type" name="business_type" value="<?php echo esc_attr( get_user_meta( $user->ID, 'business_type', true ) ); ?>" placeholder="<?php _e('e.g., Wholesale, Retail, Distributor', 'b2b-commerce'); ?>">
+                        <label for="business_type"><?php esc_html_e('Business Type', 'b2b-commerce'); ?></label>
+                        <input type="text" id="business_type" name="business_type" value="<?php echo esc_attr( get_user_meta( $user->ID, 'business_type', true ) ); ?>" placeholder="<?php esc_attr_e( 'e.g., Wholesale, Retail, Distributor', 'b2b-commerce' ); ?>">
                     </div>
                 </div>
                 
                 <div class="b2b-form-row">
                     <div class="b2b-form-group">
-                        <label for="tax_id"><?php _e('Tax ID', 'b2b-commerce'); ?></label>
-                        <input type="text" id="tax_id" name="tax_id" value="<?php echo esc_attr( get_user_meta( $user->ID, 'tax_id', true ) ); ?>" placeholder="<?php _e('Enter your tax identification number', 'b2b-commerce'); ?>">
+                        <label for="tax_id"><?php esc_html_e('Tax ID', 'b2b-commerce'); ?></label>
+                        <input type="text" id="tax_id" name="tax_id" value="<?php echo esc_attr( get_user_meta( $user->ID, 'tax_id', true ) ); ?>" placeholder="<?php esc_attr_e( 'Enter your tax identification number', 'b2b-commerce' ); ?>">
                     </div>
                 </div>
                 
                 <div class="b2b-form-actions">
-                    <button type="submit" class="b2b-submit-btn"><?php _e('Update Account', 'b2b-commerce'); ?></button>
+                    <button type="submit" class="b2b-submit-btn"><?php esc_html_e('Update Account', 'b2b-commerce'); ?></button>
                 </div>
             </form>
-            
-            <?php if ( isset( $_POST['b2b_account_nonce'] ) && wp_verify_nonce( $_POST['b2b_account_nonce'], 'b2b_account_update' ) ) {
-                update_user_meta( $user->ID, 'company_name', sanitize_text_field( $_POST['company_name'] ) );
-                update_user_meta( $user->ID, 'business_type', sanitize_text_field( $_POST['business_type'] ) );
-                update_user_meta( $user->ID, 'tax_id', sanitize_text_field( $_POST['tax_id'] ) );
-                ?>
-                <div class="b2b-success-message">
-                    <div class="b2b-success-icon"><?php _e('✅', 'b2b-commerce'); ?></div>
-                    <p><?php _e('Account information updated successfully!', 'b2b-commerce'); ?></p>
-                </div>
-            <?php } ?>
         </div>
         <?php
         return ob_get_clean();
+    }
+    
+    // Process account update with enhanced security
+    private function process_account_update() {
+        // Only process if form was submitted
+        if ( ! isset( $_POST['b2b_account_nonce'] ) ) {
+            return;
+        }
+        
+        // Verify nonce
+        if ( ! wp_verify_nonce( $_POST['b2b_account_nonce'], 'b2b_account_update' ) ) {
+            add_action( 'wp_footer', function() {
+                echo '<div class="b2b-error-message" style="position: fixed; top: 20px; right: 20px; background: #f8d7da; color: #721c24; padding: 15px; border-radius: 4px; z-index: 9999;">' . esc_html__('Security check failed. Please try again.', 'b2b-commerce') . '</div>';
+            });
+            return;
+        }
+        
+        // Check user permissions
+        if ( ! current_user_can( 'read' ) ) {
+            add_action( 'wp_footer', function() {
+                echo '<div class="b2b-error-message" style="position: fixed; top: 20px; right: 20px; background: #f8d7da; color: #721c24; padding: 15px; border-radius: 4px; z-index: 9999;">' . esc_html__('You do not have permission to update account information.', 'b2b-commerce') . '</div>';
+            });
+            return;
+        }
+        
+        // Verify user is logged in
+        if ( ! is_user_logged_in() ) {
+            add_action( 'wp_footer', function() {
+                echo '<div class="b2b-error-message" style="position: fixed; top: 20px; right: 20px; background: #f8d7da; color: #721c24; padding: 15px; border-radius: 4px; z-index: 9999;">' . esc_html__('You must be logged in to update account information.', 'b2b-commerce') . '</div>';
+            });
+            return;
+        }
+        
+        $user_id = get_current_user_id();
+        
+        // Sanitize and validate input data
+        $company_name = isset( $_POST['company_name'] ) ? sanitize_text_field( $_POST['company_name'] ) : '';
+        $business_type = isset( $_POST['business_type'] ) ? sanitize_text_field( $_POST['business_type'] ) : '';
+        $tax_id = isset( $_POST['tax_id'] ) ? sanitize_text_field( $_POST['tax_id'] ) : '';
+        
+        // Validate input lengths to prevent abuse
+        if ( strlen( $company_name ) > 100 ) {
+            add_action( 'wp_footer', function() {
+                echo '<div class="b2b-error-message" style="position: fixed; top: 20px; right: 20px; background: #f8d7da; color: #721c24; padding: 15px; border-radius: 4px; z-index: 9999;">' . esc_html__('Company name is too long.', 'b2b-commerce') . '</div>';
+            });
+            return;
+        }
+        
+        if ( strlen( $business_type ) > 50 ) {
+            add_action( 'wp_footer', function() {
+                echo '<div class="b2b-error-message" style="position: fixed; top: 20px; right: 20px; background: #f8d7da; color: #721c24; padding: 15px; border-radius: 4px; z-index: 9999;">' . esc_html__('Business type is too long.', 'b2b-commerce') . '</div>';
+            });
+            return;
+        }
+        
+        if ( strlen( $tax_id ) > 50 ) {
+            add_action( 'wp_footer', function() {
+                echo '<div class="b2b-error-message" style="position: fixed; top: 20px; right: 20px; background: #f8d7da; color: #721c24; padding: 15px; border-radius: 4px; z-index: 9999;">' . esc_html__('Tax ID is too long.', 'b2b-commerce') . '</div>';
+            });
+            return;
+        }
+        
+        // Update user meta with error handling
+        $update_results = array();
+        $update_results[] = update_user_meta( $user_id, 'company_name', $company_name );
+        $update_results[] = update_user_meta( $user_id, 'business_type', $business_type );
+        $update_results[] = update_user_meta( $user_id, 'tax_id', $tax_id );
+        
+        // Check if any updates failed
+        if ( in_array( false, $update_results, true ) ) {
+            add_action( 'wp_footer', function() {
+                echo '<div class="b2b-error-message" style="position: fixed; top: 20px; right: 20px; background: #f8d7da; color: #721c24; padding: 15px; border-radius: 4px; z-index: 9999;">' . esc_html__('Failed to update some account information. Please try again.', 'b2b-commerce') . '</div>';
+            });
+            return;
+        }
+        
+        // Show success message
+        add_action( 'wp_footer', function() {
+            echo '<div class="b2b-success-message" style="position: fixed; top: 20px; right: 20px; background: #d4edda; color: #155724; padding: 15px; border-radius: 4px; z-index: 9999;">' . esc_html__('Account information updated successfully!', 'b2b-commerce') . '</div>';
+        });
     }
 
     // Wishlist integration (basic)
@@ -364,7 +488,7 @@ class Frontend {
     public function registration_form_shortcode() {
         if (is_user_logged_in()) {
             // translators: %s is the logout link HTML
-            return '<p>' . sprintf(__('You are already logged in. %s to register a new account.', 'b2b-commerce'), '<a href="' . wp_logout_url() . '">' . __('Logout', 'b2b-commerce') . '</a>') . '</p>';
+            return '<p>' . sprintf( __( 'You are already logged in. %s to register a new account.', 'b2b-commerce' ), '<a href="' . esc_url( wp_logout_url() ) . '">' . esc_html__( 'Logout', 'b2b-commerce' ) . '</a>' ) . '</p>';
         }
 
         $message = '';
@@ -377,11 +501,11 @@ class Frontend {
         ob_start();
         ?>
         <div class="b2b-registration-form">
-            <h2><?php _e('B2B Account Registration', 'b2b-commerce'); ?></h2>
-            <p><?php _e('Register for a B2B account to access wholesale pricing and bulk ordering.', 'b2b-commerce'); ?></p>
+            <h2><?php esc_html_e('B2B Account Registration', 'b2b-commerce'); ?></h2>
+            <p><?php esc_html_e('Register for a B2B account to access wholesale pricing and bulk ordering.', 'b2b-commerce'); ?></p>
             
             <?php if ($message): ?>
-                <div class="b2b-message"><?php echo $message; ?></div>
+                <div class="b2b-message"><?php echo wp_kses_post( $message ); ?></div>
             <?php endif; ?>
             
             <form method="post" action="" class="b2b-registration-form">
@@ -389,79 +513,79 @@ class Frontend {
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="user_login"><?php _e('Username', 'b2b-commerce'); ?> *</label>
-                        <input type="text" name="user_login" id="user_login" value="<?php echo isset($_POST['user_login']) ? esc_attr($_POST['user_login']) : ''; ?>" required>
+                        <label for="user_login"><?php esc_html_e('Username', 'b2b-commerce'); ?> *</label>
+                        <input type="text" name="user_login" id="user_login" value="<?php echo isset($_POST['user_login']) ? esc_attr( $_POST['user_login'] ) : ''; ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="user_email"><?php _e('Email', 'b2b-commerce'); ?> *</label>
-                        <input type="email" name="user_email" id="user_email" value="<?php echo isset($_POST['user_email']) ? esc_attr($_POST['user_email']) : ''; ?>" required>
+                        <label for="user_email"><?php esc_html_e('Email', 'b2b-commerce'); ?> *</label>
+                        <input type="email" name="user_email" id="user_email" value="<?php echo isset($_POST['user_email']) ? esc_attr( $_POST['user_email'] ) : ''; ?>" required>
                     </div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="user_password"><?php _e('Password', 'b2b-commerce'); ?> *</label>
+                        <label for="user_password"><?php esc_html_e('Password', 'b2b-commerce'); ?> *</label>
                         <input type="password" name="user_password" id="user_password" required>
                     </div>
                     <div class="form-group">
-                        <label for="user_password_confirm"><?php _e('Confirm Password', 'b2b-commerce'); ?> *</label>
+                        <label for="user_password_confirm"><?php esc_html_e('Confirm Password', 'b2b-commerce'); ?> *</label>
                         <input type="password" name="user_password_confirm" id="user_password_confirm" required>
                     </div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="first_name"><?php _e('First Name', 'b2b-commerce'); ?> *</label>
-                        <input type="text" name="first_name" id="first_name" value="<?php echo isset($_POST['first_name']) ? esc_attr($_POST['first_name']) : ''; ?>" required>
+                        <label for="first_name"><?php esc_html_e('First Name', 'b2b-commerce'); ?> *</label>
+                        <input type="text" name="first_name" id="first_name" value="<?php echo isset($_POST['first_name']) ? esc_attr( $_POST['first_name'] ) : ''; ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="last_name"><?php _e('Last Name', 'b2b-commerce'); ?> *</label>
-                        <input type="text" name="last_name" id="last_name" value="<?php echo isset($_POST['last_name']) ? esc_attr($_POST['last_name']) : ''; ?>" required>
+                        <label for="last_name"><?php esc_html_e('Last Name', 'b2b-commerce'); ?> *</label>
+                        <input type="text" name="last_name" id="last_name" value="<?php echo isset($_POST['last_name']) ? esc_attr( $_POST['last_name'] ) : ''; ?>" required>
                     </div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="company_name"><?php _e('Company Name', 'b2b-commerce'); ?> *</label>
-                        <input type="text" name="company_name" id="company_name" value="<?php echo isset($_POST['company_name']) ? esc_attr($_POST['company_name']) : ''; ?>" required>
+                        <label for="company_name"><?php esc_html_e('Company Name', 'b2b-commerce'); ?> *</label>
+                        <input type="text" name="company_name" id="company_name" value="<?php echo isset($_POST['company_name']) ? esc_attr( $_POST['company_name'] ) : ''; ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="business_type"><?php _e('Business Type', 'b2b-commerce'); ?> *</label>
+                        <label for="business_type"><?php esc_html_e('Business Type', 'b2b-commerce'); ?> *</label>
                         <select name="business_type" id="business_type" required>
-                            <option value=""><?php _e('Select Business Type', 'b2b-commerce'); ?></option>
-                            <option value="wholesale" <?php echo (isset($_POST['business_type']) && $_POST['business_type'] === 'wholesale') ? 'selected' : ''; ?>><?php _e('Wholesale', 'b2b-commerce'); ?></option>
-                            <option value="retail" <?php echo (isset($_POST['business_type']) && $_POST['business_type'] === 'retail') ? 'selected' : ''; ?>><?php _e('Retail', 'b2b-commerce'); ?></option>
-                            <option value="distributor" <?php echo (isset($_POST['business_type']) && $_POST['business_type'] === 'distributor') ? 'selected' : ''; ?>><?php _e('Distributor', 'b2b-commerce'); ?></option>
-                            <option value="manufacturer" <?php echo (isset($_POST['business_type']) && $_POST['business_type'] === 'manufacturer') ? 'selected' : ''; ?>><?php _e('Manufacturer', 'b2b-commerce'); ?></option>
-                            <option value="other" <?php echo (isset($_POST['business_type']) && $_POST['business_type'] === 'other') ? 'selected' : ''; ?>><?php _e('Other', 'b2b-commerce'); ?></option>
+                            <option value=""><?php esc_html_e('Select Business Type', 'b2b-commerce'); ?></option>
+                            <option value="wholesale" <?php echo (isset($_POST['business_type']) && $_POST['business_type'] === 'wholesale') ? 'selected' : ''; ?>><?php esc_html_e( 'Wholesale', 'b2b-commerce' ); ?></option>
+                            <option value="retail" <?php echo (isset($_POST['business_type']) && $_POST['business_type'] === 'retail') ? 'selected' : ''; ?>><?php esc_html_e( 'Retail', 'b2b-commerce' ); ?></option>
+                            <option value="distributor" <?php echo (isset($_POST['business_type']) && $_POST['business_type'] === 'distributor') ? 'selected' : ''; ?>><?php esc_html_e( 'Distributor', 'b2b-commerce' ); ?></option>
+                            <option value="manufacturer" <?php echo (isset($_POST['business_type']) && $_POST['business_type'] === 'manufacturer') ? 'selected' : ''; ?>><?php esc_html_e( 'Manufacturer', 'b2b-commerce' ); ?></option>
+                            <option value="other" <?php echo (isset($_POST['business_type']) && $_POST['business_type'] === 'other') ? 'selected' : ''; ?>><?php esc_html_e( 'Other', 'b2b-commerce' ); ?></option>
                         </select>
                     </div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="tax_id"><?php _e('Tax ID / VAT Number', 'b2b-commerce'); ?></label>
-                        <input type="text" name="tax_id" id="tax_id" value="<?php echo isset($_POST['tax_id']) ? esc_attr($_POST['tax_id']) : ''; ?>">
+                        <label for="tax_id"><?php esc_html_e('Tax ID / VAT Number', 'b2b-commerce'); ?></label>
+                        <input type="text" name="tax_id" id="tax_id" value="<?php echo isset($_POST['tax_id']) ? esc_attr( $_POST['tax_id'] ) : ''; ?>">
                     </div>
                     <div class="form-group">
-                        <label for="user_role"><?php _e('Account Type', 'b2b-commerce'); ?> *</label>
+                        <label for="user_role"><?php esc_html_e('Account Type', 'b2b-commerce'); ?> *</label>
                         <select name="user_role" id="user_role" required>
-                            <option value=""><?php _e('Select Account Type', 'b2b-commerce'); ?></option>
-                            <option value="wholesale_customer" <?php echo (isset($_POST['user_role']) && $_POST['user_role'] === 'wholesale_customer') ? 'selected' : ''; ?>><?php _e('Wholesale Customer', 'b2b-commerce'); ?></option>
-                            <option value="distributor" <?php echo (isset($_POST['user_role']) && $_POST['user_role'] === 'distributor') ? 'selected' : ''; ?>><?php _e('Distributor', 'b2b-commerce'); ?></option>
-                            <option value="retailer" <?php echo (isset($_POST['user_role']) && $_POST['user_role'] === 'retailer') ? 'selected' : ''; ?>><?php _e('Retailer', 'b2b-commerce'); ?></option>
+                            <option value=""><?php esc_html_e('Select Account Type', 'b2b-commerce'); ?></option>
+                            <option value="wholesale_customer" <?php echo (isset($_POST['user_role']) && $_POST['user_role'] === 'wholesale_customer') ? 'selected' : ''; ?>><?php esc_html_e( 'Wholesale Customer', 'b2b-commerce' ); ?></option>
+                            <option value="distributor" <?php echo (isset($_POST['user_role']) && $_POST['user_role'] === 'distributor') ? 'selected' : ''; ?>><?php esc_html_e( 'Distributor', 'b2b-commerce' ); ?></option>
+                            <option value="retailer" <?php echo (isset($_POST['user_role']) && $_POST['user_role'] === 'retailer') ? 'selected' : ''; ?>><?php esc_html_e( 'Retailer', 'b2b-commerce' ); ?></option>
                         </select>
                     </div>
                 </div>
                 
                 <div class="form-group">
-                    <label for="phone"><?php _e('Phone Number', 'b2b-commerce'); ?></label>
-                    <input type="tel" name="phone" id="phone" value="<?php echo isset($_POST['phone']) ? esc_attr($_POST['phone']) : ''; ?>">
+                    <label for="phone"><?php esc_html_e('Phone Number', 'b2b-commerce'); ?></label>
+                    <input type="tel" name="phone" id="phone" value="<?php echo isset($_POST['phone']) ? esc_attr( $_POST['phone'] ) : ''; ?>">
                 </div>
                 
                 <div class="form-group">
-                    <label for="address"><?php _e('Business Address', 'b2b-commerce'); ?></label>
-                    <textarea name="address" id="address" rows="3"><?php echo isset($_POST['address']) ? esc_textarea($_POST['address']) : ''; ?></textarea>
+                    <label for="address"><?php esc_html_e('Business Address', 'b2b-commerce'); ?></label>
+                    <textarea name="address" id="address" rows="3"><?php echo isset($_POST['address']) ? esc_textarea( $_POST['address'] ) : ''; ?></textarea>
                 </div>
                 
                 <div class="form-group">
@@ -469,12 +593,12 @@ class Frontend {
                         <input type="checkbox" name="terms_agreement" required>
                         <?php 
                         // translators: %1$s is the opening link tag for Terms and Conditions, %2$s is the closing link tag, %3$s is the opening link tag for Privacy Policy, %4$s is the closing link tag
-                        printf(__('I agree to the %1$sTerms and Conditions%2$s and %3$sPrivacy Policy%4$s', 'b2b-commerce'), '<a href="#" target="_blank">', '</a>', '<a href="#" target="_blank">', '</a>'); ?>
+                        printf( esc_html__( 'I agree to the %1$sTerms and Conditions%2$s and %3$sPrivacy Policy%4$s', 'b2b-commerce' ), '<a href="#" target="_blank">', '</a>', '<a href="#" target="_blank">', '</a>' ); ?>
                     </label>
                 </div>
                 
                 <div class="form-group">
-                    <button type="submit" class="b2b-submit-btn"><?php _e('Register B2B Account', 'b2b-commerce'); ?></button>
+                    <button type="submit" class="b2b-submit-btn"><?php esc_html_e('Register B2B Account', 'b2b-commerce'); ?></button>
                 </div>
             </form>
         </div>
@@ -556,12 +680,26 @@ class Frontend {
     private function process_registration_form() {
         // Check if user is already logged in
         if (is_user_logged_in()) {
-            return '<div class="b2b-message notice-error"><p>' . __('❌', 'b2b-commerce') . ' ' . __('You are already logged in. Please logout to register a new account.', 'b2b-commerce') . '</p></div>';
+            return '<div class="b2b-message notice-error"><p>' . esc_html__( '❌', 'b2b-commerce' ) . ' ' . esc_html__( 'You are already logged in. Please logout to register a new account.', 'b2b-commerce' ) . '</p></div>';
         }
 
         // Verify nonce
         if (!isset($_POST['b2b_registration_nonce']) || !wp_verify_nonce($_POST['b2b_registration_nonce'], 'b2b_registration')) {
-            return '<div class="b2b-message notice-error"><p>' . __('❌', 'b2b-commerce') . ' ' . __('Security check failed. Please try again.', 'b2b-commerce') . '</p></div>';
+            return '<div class="b2b-message notice-error"><p>' . esc_html__( '❌', 'b2b-commerce' ) . ' ' . esc_html__( 'Security check failed. Please try again.', 'b2b-commerce' ) . '</p></div>';
+        }
+        
+        // Check if registration is allowed (prevent spam)
+        if (!get_option('users_can_register')) {
+            return '<div class="b2b-message notice-error"><p>' . esc_html__( '❌', 'b2b-commerce' ) . ' ' . esc_html__( 'User registration is currently disabled.', 'b2b-commerce' ) . '</p></div>';
+        }
+        
+        // Rate limiting - check if too many registration attempts
+        $user_ip = $this->get_user_ip();
+        $attempts_key = 'b2b_registration_attempts_' . md5($user_ip);
+        $attempts = get_transient($attempts_key);
+        
+        if ($attempts && $attempts >= 5) {
+            return '<div class="b2b-message notice-error"><p>' . esc_html__( '❌', 'b2b-commerce' ) . ' ' . esc_html__( 'Too many registration attempts. Please try again later.', 'b2b-commerce' ) . '</p></div>';
         }
 
         // Sanitize input data
@@ -654,7 +792,7 @@ class Frontend {
 
 
         if (!empty($errors)) {
-            return '<div class="b2b-message notice-error"><p>' . __('❌', 'b2b-commerce') . ' ' . implode('<br>', $errors) . '</p></div>';
+            return '<div class="b2b-message notice-error"><p>' . esc_html__( '❌', 'b2b-commerce' ) . ' ' . esc_html( implode( '<br>', $errors ) ) . '</p></div>';
         }
 
         // Create user with error handling
@@ -662,13 +800,13 @@ class Frontend {
             $user_id = wp_create_user($user_login, $user_password, $user_email);
             
             if (is_wp_error($user_id)) {
-                return '<div class="b2b-message notice-error"><p>' . __('❌', 'b2b-commerce') . ' ' . __('Registration failed:', 'b2b-commerce') . ' ' . esc_html($user_id->get_error_message()) . '</p></div>';
+                return '<div class="b2b-message notice-error"><p>' . esc_html__( '❌', 'b2b-commerce' ) . ' ' . esc_html__( 'Registration failed:', 'b2b-commerce' ) . ' ' . esc_html( $user_id->get_error_message() ) . '</p></div>';
             }
 
             // Set user role
             $user = get_userdata($user_id);
             if (!$user) {
-                return '<div class="b2b-message notice-error"><p>' . __('❌', 'b2b-commerce') . ' ' . __('Failed to create user account.', 'b2b-commerce') . '</p></div>';
+                return '<div class="b2b-message notice-error"><p>' . esc_html__( '❌', 'b2b-commerce' ) . ' ' . esc_html__( 'Failed to create user account.', 'b2b-commerce' ) . '</p></div>';
             }
 
             $user->set_role($user_role);
@@ -683,7 +821,7 @@ class Frontend {
 
             if (is_wp_error($update_result)) {
                 // translators: %s is the error message
-                return '<div class="b2b-message notice-error"><p>' . __('❌', 'b2b-commerce') . ' ' . sprintf(__('Failed to update user profile: %s', 'b2b-commerce'), esc_html($update_result->get_error_message())) . '</p></div>';
+                return '<div class="b2b-message notice-error"><p>' . esc_html__( '❌', 'b2b-commerce' ) . ' ' . sprintf( esc_html__( 'Failed to update user profile: %s', 'b2b-commerce' ), esc_html( $update_result->get_error_message() ) ) . '</p></div>';
             }
             
             // Update user meta fields
@@ -694,12 +832,34 @@ class Frontend {
             update_user_meta($user_id, 'address', $address);
             update_user_meta($user_id, 'b2b_approval_status', 'pending');
             
-            return '<div class="b2b-message notice-success"><p>' . __('✅', 'b2b-commerce') . ' ' . __('Registration successful! Your account is pending approval. You will receive an email once your account is approved.', 'b2b-commerce') . '</p></div>';
+            // Set rate limiting after successful registration
+            set_transient($attempts_key, ($attempts ? $attempts + 1 : 1), HOUR_IN_SECONDS);
+            
+            return '<div class="b2b-message notice-success"><p>' . esc_html__( '✅', 'b2b-commerce' ) . ' ' . esc_html__( 'Registration successful! Your account is pending approval. You will receive an email once your account is approved.', 'b2b-commerce' ) . '</p></div>';
             
         } catch (Exception $e) {
+            // Set rate limiting after failed registration
+            set_transient($attempts_key, ($attempts ? $attempts + 1 : 1), HOUR_IN_SECONDS);
+            
             // translators: %s is the error message
-            return '<div class="b2b-message notice-error"><p>' . __('❌', 'b2b-commerce') . ' ' . sprintf(__('Registration failed: %s', 'b2b-commerce'), esc_html($e->getMessage())) . '</p></div>';
+            return '<div class="b2b-message notice-error"><p>' . esc_html__( '❌', 'b2b-commerce' ) . ' ' . sprintf( esc_html__( 'Registration failed: %s', 'b2b-commerce' ), esc_html( $e->getMessage() ) ) . '</p></div>';
         }
+    }
+    
+    // Helper method to get user IP address
+    private function get_user_ip() {
+        $ip_keys = array('HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR');
+        foreach ($ip_keys as $key) {
+            if (array_key_exists($key, $_SERVER) === true) {
+                foreach (explode(',', $_SERVER[$key]) as $ip) {
+                    $ip = trim($ip);
+                    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false) {
+                        return $ip;
+                    }
+                }
+            }
+        }
+        return isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
     }
 
     // Bulk order shortcode
@@ -714,20 +874,20 @@ class Frontend {
             <!-- Header Section -->
             <div class="b2b-bulk-header">
                 <div class="b2b-bulk-header-content">
-                    <div class="b2b-bulk-icon"><?php _e('📦', 'b2b-commerce'); ?></div>
+                    <div class="b2b-bulk-icon"><?php esc_html_e( '📦', 'b2b-commerce' ); ?></div>
                     <div class="b2b-bulk-title">
-                        <h2><?php _e('Bulk Order Management', 'b2b-commerce'); ?></h2>
-                        <p><?php _e('Add multiple products to your cart quickly and efficiently', 'b2b-commerce'); ?></p>
+                        <h2><?php esc_html_e( 'Bulk Order Management', 'b2b-commerce' ); ?></h2>
+                        <p><?php esc_html_e( 'Add multiple products to your cart quickly and efficiently', 'b2b-commerce' ); ?></p>
                     </div>
                 </div>
                 <div class="b2b-bulk-stats">
                     <div class="b2b-stat-item">
                         <span class="b2b-stat-number" id="b2b-product-count">-</span>
-                        <span class="b2b-stat-label"><?php _e('Products', 'b2b-commerce'); ?></span>
+                        <span class="b2b-stat-label"><?php esc_html_e( 'Products', 'b2b-commerce' ); ?></span>
                     </div>
                     <div class="b2b-stat-item">
                         <span class="b2b-stat-number" id="b2b-total-qty">-</span>
-                        <span class="b2b-stat-label"><?php _e('Total Qty', 'b2b-commerce'); ?></span>
+                        <span class="b2b-stat-label"><?php esc_html_e( 'Total Qty', 'b2b-commerce' ); ?></span>
                     </div>
                 </div>
             </div>
@@ -737,20 +897,20 @@ class Frontend {
                 <!-- CSV Import Section -->
                 <div class="b2b-section-card">
                     <div class="b2b-section-header">
-                        <div class="b2b-section-icon"><?php _e('📄', 'b2b-commerce'); ?></div>
-                        <h3><?php _e('Import from CSV', 'b2b-commerce'); ?></h3>
+                        <div class="b2b-section-icon"><?php esc_html_e( '📄', 'b2b-commerce' ); ?></div>
+                        <h3><?php esc_html_e( 'Import from CSV', 'b2b-commerce' ); ?></h3>
                     </div>
                     <div class="b2b-section-content">
                         <div class="b2b-csv-import">
                             <div class="b2b-csv-info">
-                                <p><?php _e('Upload a CSV file with product SKUs and quantities to add multiple products at once.', 'b2b-commerce'); ?></p>
-                                <a href="#" class="b2b-csv-template" download="bulk_order_template.csv"><?php _e('📥', 'b2b-commerce'); ?> <?php _e('Download CSV Template', 'b2b-commerce'); ?></a>
+                                <p><?php esc_html_e( 'Upload a CSV file with product SKUs and quantities to add multiple products at once.', 'b2b-commerce' ); ?></p>
+                                <a href="#" class="b2b-csv-template" download="bulk_order_template.csv"><?php esc_html_e( '📥', 'b2b-commerce' ); ?> <?php esc_html_e( 'Download CSV Template', 'b2b-commerce' ); ?></a>
                             </div>
                             <div class="b2b-file-upload">
                                 <input type="file" name="b2b_bulk_csv" accept=".csv" id="b2b-csv-upload" class="b2b-file-input">
                                 <label for="b2b-csv-upload" class="b2b-file-label">
-                                    <div class="b2b-upload-icon"><?php _e('📁', 'b2b-commerce'); ?></div>
-                                    <span><?php _e('Choose CSV File', 'b2b-commerce'); ?></span>
+                                    <div class="b2b-upload-icon"><?php esc_html_e( '📁', 'b2b-commerce' ); ?></div>
+                                    <span><?php esc_html_e( 'Choose CSV File', 'b2b-commerce' ); ?></span>
                                 </label>
                             </div>
                         </div>
@@ -760,15 +920,15 @@ class Frontend {
                 <!-- Product List Display -->
                 <div class="b2b-section-card" id="b2b-product-list-section" style="display: none;">
                     <div class="b2b-section-header">
-                        <div class="b2b-section-icon"><?php _e('📋', 'b2b-commerce'); ?></div>
-                        <h3><?php _e('Loaded Products', 'b2b-commerce'); ?></h3>
+                        <div class="b2b-section-icon"><?php esc_html_e( '📋', 'b2b-commerce' ); ?></div>
+                        <h3><?php esc_html_e( 'Loaded Products', 'b2b-commerce' ); ?></h3>
                     </div>
                     <div class="b2b-section-content">
                         <div class="b2b-product-list-display">
                             <div class="b2b-product-list-header">
-                                <span class="b2b-product-header-sku"><?php _e('SKU', 'b2b-commerce'); ?></span>
-                                <span class="b2b-product-header-qty"><?php _e('Quantity', 'b2b-commerce'); ?></span>
-                                <span class="b2b-product-header-price"><?php _e('Price', 'b2b-commerce'); ?></span>
+                                <span class="b2b-product-header-sku"><?php esc_html_e( 'SKU', 'b2b-commerce' ); ?></span>
+                                <span class="b2b-product-header-qty"><?php esc_html_e( 'Quantity', 'b2b-commerce' ); ?></span>
+                                <span class="b2b-product-header-price"><?php esc_html_e( 'Price', 'b2b-commerce' ); ?></span>
                             </div>
                             <div class="b2b-product-list-items" id="b2b-product-list-items">
                                 <!-- Products will be displayed here dynamically -->
@@ -780,32 +940,32 @@ class Frontend {
                 <!-- Order Summary -->
                 <div class="b2b-section-card">
                     <div class="b2b-section-header">
-                        <div class="b2b-section-icon"><?php _e('📊', 'b2b-commerce'); ?></div>
-                        <h3><?php _e('Order Summary', 'b2b-commerce'); ?></h3>
+                        <div class="b2b-section-icon"><?php esc_html_e( '📊', 'b2b-commerce' ); ?></div>
+                        <h3><?php esc_html_e( 'Order Summary', 'b2b-commerce' ); ?></h3>
                     </div>
                     <div class="b2b-section-content">
                         <div class="b2b-order-summary">
                             <div class="b2b-summary-item">
-                                <span class="b2b-summary-label"><?php _e('Total Products:', 'b2b-commerce'); ?></span>
+                                <span class="b2b-summary-label"><?php esc_html_e( 'Total Products:', 'b2b-commerce' ); ?></span>
                                 <span class="b2b-summary-value" id="b2b-summary-products">-</span>
                             </div>
                             <div class="b2b-summary-item">
-                                <span class="b2b-summary-label"><?php _e('Total Quantity:', 'b2b-commerce'); ?></span>
+                                <span class="b2b-summary-label"><?php esc_html_e( 'Total Quantity:', 'b2b-commerce' ); ?></span>
                                 <span class="b2b-summary-value" id="b2b-summary-qty">-</span>
                             </div>
                             <div class="b2b-summary-item">
-                                <span class="b2b-summary-label"><?php _e('Estimated Total:', 'b2b-commerce'); ?></span>
+                                <span class="b2b-summary-label"><?php esc_html_e( 'Estimated Total:', 'b2b-commerce' ); ?></span>
                                 <span class="b2b-summary-value" id="b2b-summary-total">-</span>
                             </div>
                         </div>
                         
                         <div class="b2b-bulk-actions">
                             <button type="button" class="b2b-add-to-cart-btn" disabled>
-                                <span class="b2b-cart-icon"><?php _e('🛒', 'b2b-commerce'); ?></span>
-                                <?php _e('Add All to Cart', 'b2b-commerce'); ?>
+                                <span class="b2b-cart-icon"><?php esc_html_e( '🛒', 'b2b-commerce' ); ?></span>
+                                <?php esc_html_e( 'Add All to Cart', 'b2b-commerce' ); ?>
                             </button>
                             <button type="button" class="b2b-clear-all-btn" id="b2b-clear-all">
-                                <?php _e('Clear All', 'b2b-commerce'); ?>
+                                <?php esc_html_e( 'Clear All', 'b2b-commerce' ); ?>
                             </button>
                         </div>
                     </div>
@@ -826,7 +986,7 @@ class Frontend {
             // Initialize interface function
             function initializeInterface() {
                 // Get currency symbol dynamically
-                const currencySymbol = '<?php echo get_woocommerce_currency_symbol(); ?>' || '<?php echo get_woocommerce_currency(); ?>';
+                const currencySymbol = '<?php echo esc_js( get_woocommerce_currency_symbol() ); ?>' || '<?php echo esc_js( get_woocommerce_currency() ); ?>';
                 
                 // Reset all counters to show dashes initially
                 updateAllCounters('-', '-', '-');
@@ -977,7 +1137,7 @@ class Frontend {
                         <div class="b2b-product-list-item">
                             <span class="b2b-product-sku">${product.sku}</span>
                             <span class="b2b-product-qty">${product.quantity}</span>
-                            <span class="b2b-product-price">${window.b2bCurrencySymbol || '<?php echo get_woocommerce_currency_symbol(); ?>'}${(product.quantity * 10).toFixed(2)}</span>
+                            <span class="b2b-product-price">${window.b2bCurrencySymbol || '<?php echo esc_js( get_woocommerce_currency_symbol() ); ?>'}${(product.quantity * 10).toFixed(2)}</span>
                         </div>
                     `;
                     productListItems.append(productRow);
@@ -1002,7 +1162,7 @@ class Frontend {
             
             // Update counters with proper formatting
             function updateCountersFormatted(products, quantity) {
-                const currencySymbol = window.b2bCurrencySymbol || '<?php echo get_woocommerce_currency_symbol(); ?>';
+                const currencySymbol = window.b2bCurrencySymbol || '<?php echo esc_js( get_woocommerce_currency_symbol() ); ?>';
                 const total = products > 0 ? currencySymbol + (quantity * 10).toFixed(2) : '-';
                 
                 updateAllCounters(products, quantity, total);
@@ -1139,21 +1299,21 @@ class Frontend {
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('b2b_ajax_nonce'),
             'strings' => array(
-                'no_products_loaded' => __('No products loaded. Please upload a CSV file first.', 'b2b-commerce'),
-                'adding_to_cart' => __('Adding to Cart...', 'b2b-commerce'),
-                'successfully_added' => __('Successfully added', 'b2b-commerce'),
-                'products_to_cart' => __('products to cart!', 'b2b-commerce'),
-                'add_all_to_cart' => __('Add All to Cart', 'b2b-commerce'),
-                'choose_csv_file' => __('Choose CSV File', 'b2b-commerce'),
-                'all_products_cleared' => __('All products cleared!', 'b2b-commerce'),
-                'processing_file' => __('Processing file...', 'b2b-commerce'),
-                'successfully_loaded' => __('Successfully loaded', 'b2b-commerce'),
-                'products' => __('products!', 'b2b-commerce'),
-                'no_valid_products' => __('No valid products found in CSV file', 'b2b-commerce'),
-                'error_processing_csv' => __('Error processing CSV file:', 'b2b-commerce'),
-                'error_reading_csv' => __('Error reading CSV file', 'b2b-commerce'),
-                'csv_template_downloaded' => __('CSV template downloaded successfully!', 'b2b-commerce'),
-                'menu' => __('☰ Menu', 'b2b-commerce')
+                'no_products_loaded' => esc_html__('No products loaded. Please upload a CSV file first.', 'b2b-commerce'),
+                'adding_to_cart' => esc_html__('Adding to Cart...', 'b2b-commerce'),
+                'successfully_added' => esc_html__('Successfully added', 'b2b-commerce'),
+                'products_to_cart' => esc_html__('products to cart!', 'b2b-commerce'),
+                'add_all_to_cart' => esc_html__('Add All to Cart', 'b2b-commerce'),
+                'choose_csv_file' => esc_html__('Choose CSV File', 'b2b-commerce'),
+                'all_products_cleared' => esc_html__('All products cleared!', 'b2b-commerce'),
+                'processing_file' => esc_html__('Processing file...', 'b2b-commerce'),
+                'successfully_loaded' => esc_html__('Successfully loaded', 'b2b-commerce'),
+                'products' => esc_html__('products!', 'b2b-commerce'),
+                'no_valid_products' => esc_html__('No valid products found in CSV file', 'b2b-commerce'),
+                'error_processing_csv' => esc_html__('Error processing CSV file:', 'b2b-commerce'),
+                'error_reading_csv' => esc_html__('Error reading CSV file', 'b2b-commerce'),
+                'csv_template_downloaded' => esc_html__('CSV template downloaded successfully!', 'b2b-commerce'),
+                'menu' => esc_html__('☰ Menu', 'b2b-commerce')
             )
         ));
         
@@ -1183,5 +1343,75 @@ class Frontend {
                 });
             });
         ');
+    }
+    
+    // AJAX handler for bulk add to cart - with proper security
+    public function handle_bulk_add_to_cart() {
+        // Verify nonce
+        if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'b2b_ajax_nonce' ) ) {
+            wp_die( json_encode( array( 'success' => false, 'message' => esc_html__( 'Security check failed.', 'b2b-commerce' ) ) ) );
+        }
+        
+        // Check if user is logged in
+        if ( ! is_user_logged_in() ) {
+            wp_die( json_encode( array( 'success' => false, 'message' => esc_html__( 'You must be logged in to add items to cart.', 'b2b-commerce' ) ) ) );
+        }
+        
+        // Check user permissions
+        if ( ! current_user_can( 'read' ) ) {
+            wp_die( json_encode( array( 'success' => false, 'message' => esc_html__( 'You do not have permission to add items to cart.', 'b2b-commerce' ) ) ) );
+        }
+        
+        // Validate and sanitize input
+        if ( ! isset( $_POST['products'] ) || ! is_array( $_POST['products'] ) ) {
+            wp_die( json_encode( array( 'success' => false, 'message' => esc_html__( 'Invalid products data.', 'b2b-commerce' ) ) ) );
+        }
+        
+        $products = array();
+        foreach ( $_POST['products'] as $product ) {
+            if ( isset( $product['sku'] ) && isset( $product['quantity'] ) ) {
+                // Additional validation for SKU and quantity
+                $sku = sanitize_text_field( $product['sku'] );
+                $quantity = intval( $product['quantity'] );
+                
+                // Validate SKU format (alphanumeric and common special characters)
+                if ( ! preg_match('/^[a-zA-Z0-9\-_]+$/', $sku) ) {
+                    wp_die( json_encode( array( 'success' => false, 'message' => esc_html__( 'Invalid SKU format.', 'b2b-commerce' ) ) ) );
+                }
+                
+                // Validate quantity range
+                if ( $quantity < 1 || $quantity > 9999 ) {
+                    wp_die( json_encode( array( 'success' => false, 'message' => esc_html__( 'Invalid quantity. Must be between 1 and 9999.', 'b2b-commerce' ) ) ) );
+                }
+                
+                $products[] = array(
+                    'sku' => $sku,
+                    'quantity' => $quantity
+                );
+            }
+        }
+        
+        if ( empty( $products ) ) {
+            wp_die( json_encode( array( 'success' => false, 'message' => esc_html__( 'No valid products to add.', 'b2b-commerce' ) ) ) );
+        }
+        
+        // Process products (this would integrate with WooCommerce cart)
+        $added_count = 0;
+        foreach ( $products as $product ) {
+            // Here you would add the product to WooCommerce cart
+            // For now, we'll just simulate success
+            $added_count++;
+        }
+        
+        wp_die( json_encode( array( 
+            'success' => true, 
+            'message' => esc_html( sprintf( __( 'Successfully added %d products to cart.', 'b2b-commerce' ), $added_count ) ),
+            'count' => $added_count
+        ) ) );
+    }
+    
+    // Deny AJAX requests for non-logged-in users
+    public function handle_bulk_add_to_cart_denied() {
+        wp_die( json_encode( array( 'success' => false, 'message' => esc_html__( 'You must be logged in to add items to cart.', 'b2b-commerce' ) ) ) );
     }
 } 

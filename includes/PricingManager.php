@@ -33,6 +33,11 @@ class PricingManager {
         add_action( 'woocommerce_remove_cart_item', [ $this, 'clear_notice_flag' ] );
         add_action( 'admin_post_' . self::SAVE_PRICING_RULE_NONCE, [ $this, 'save_pricing_rule' ] );
         add_action( 'admin_post_' . self::DELETE_PRICING_RULE_NONCE, [ $this, 'delete_pricing_rule' ] );
+        
+        // AJAX handlers with proper security
+        add_action( 'wp_ajax_b2b_get_pricing_rules', [ $this, 'ajax_get_pricing_rules' ] );
+        add_action( 'wp_ajax_b2b_bulk_operations', [ $this, 'ajax_bulk_operations' ] );
+        
         // Scripts are now handled by the main plugin file
         // Enqueue B2B assets
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_b2b_assets' ] );
@@ -88,8 +93,8 @@ class PricingManager {
 
         $exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table));
         if ($exists !== $table) {
-            // translators: %s is the table name that failed to be created
-            error_log(sprintf(__('B2B Commerce: Failed to create pricing table: %s', 'b2b-commerce'), $table));
+        // translators: %s is the table name that failed to be created
+        error_log(sprintf(__('B2B Commerce: Failed to create pricing table: %s', 'b2b-commerce'), esc_html($table)));
             return false;
         }
         
@@ -128,15 +133,15 @@ class PricingManager {
         }
         
         
-        $count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM %i", $table));
+        $count = $wpdb->get_var("SELECT COUNT(*) FROM `" . $wpdb->_escape($table) . "`");
         // translators: %d is the number of pricing rules in the table
-        error_log(sprintf(__('B2B Pricing: Table exists with %d rules', 'b2b-commerce'), $count));
+        error_log(sprintf(__('B2B Pricing: Table exists with %d rules', 'b2b-commerce'), intval($count)));
         return true;
     }
 
     public function admin_notice_table_error() {
         if ( get_option( self::PRICING_TABLE_ERROR_OPTION ) ) {
-            echo '<div class="notice notice-error"><p><strong>' . __('B2B Commerce:', 'b2b-commerce') . '</strong> ' . __('Could not create the pricing rules table. Please check your database permissions or contact your host.', 'b2b-commerce') . '</p></div>';
+            echo '<div class="notice notice-error"><p><strong>' . esc_html__('B2B Commerce:', 'b2b-commerce') . '</strong> ' . esc_html__('Could not create the pricing rules table. Please check your database permissions or contact your host.', 'b2b-commerce') . '</p></div>';
         }
     }
 
@@ -201,10 +206,20 @@ class PricingManager {
     public function apply_pricing_rules( $price, $product ) {
         if ( ! is_user_logged_in() ) return $price;
         
+        // Validate user permissions
+        if ( ! $this->validate_user_permissions('read') ) {
+            return $price;
+        }
+        
         $user = wp_get_current_user();
         $user_id = $user->ID;
         $roles = $user->roles;
         $product_id = $product->get_id();
+        
+        // Validate product ID
+        if ( ! $product_id || $product_id <= 0 ) {
+            return $price;
+        }
         
         // First check for product-level B2B pricing (set in product edit page)
         $product_level_price = $this->get_product_level_b2b_price($product_id, $roles);
@@ -287,7 +302,7 @@ class PricingManager {
         
         // Debug logging
         if ($matched_rule) {
-            error_log("B2B Pricing: Product $product_id, User $user_id, Original: $price, New: $best_price, Rule ID: " . $matched_rule->id);
+            error_log("B2B Pricing: Product " . esc_html($product_id) . ", User " . esc_html($user_id) . ", Original: " . esc_html($price) . ", New: " . esc_html($best_price) . ", Rule ID: " . esc_html($matched_rule->id));
         }
         
         return $best_price;
@@ -297,10 +312,20 @@ class PricingManager {
     public function apply_pricing_to_price_html( $price_html, $product ) {
         if ( ! is_user_logged_in() ) return $price_html;
         
+        // Validate user permissions
+        if ( ! $this->validate_user_permissions('read') ) {
+            return $price_html;
+        }
+        
         $user = wp_get_current_user();
         $user_id = $user->ID;
         $roles = $user->roles;
         $product_id = $product->get_id();
+        
+        // Validate product ID
+        if ( ! $product_id || $product_id <= 0 ) {
+            return $price_html;
+        }
         
         // First check for product-level B2B pricing (set in product edit page)
         $product_level_price = $this->get_product_level_b2b_price($product_id, $roles);
@@ -315,11 +340,11 @@ class PricingManager {
             
             if ($b2b_sale_price && $b2b_sale_price < $b2b_regular_price) {
                 // There's a sale price - show regular price as strikethrough, sale price as active
-                $new_price_html .= '<del><span class="woocommerce-Price-amount amount">' . wc_price($b2b_regular_price) . '</span></del> ';
-                $new_price_html .= '<ins><span class="woocommerce-Price-amount amount">' . wc_price($b2b_sale_price) . '</span></ins>';
+            $new_price_html .= '<del><span class="woocommerce-Price-amount amount">' . wp_kses_post(wc_price($b2b_regular_price)) . '</span></del> ';
+            $new_price_html .= '<ins><span class="woocommerce-Price-amount amount">' . wp_kses_post(wc_price($b2b_sale_price)) . '</span></ins>';
             } else {
                 // No sale price - just show the B2B price without strikethrough
-                $new_price_html .= '<span class="woocommerce-Price-amount amount">' . wc_price($product_level_price) . '</span>';
+                $new_price_html .= '<span class="woocommerce-Price-amount amount">' . wp_kses_post(wc_price($product_level_price)) . '</span>';
             }
             
             $new_price_html .= '</span>';
@@ -332,8 +357,8 @@ class PricingManager {
         // Query product-specific rules AND global rules (product_id = 0)
         $rules = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT * FROM %i WHERE product_id = %d OR product_id = 0",
-                $table, $product_id
+                "SELECT * FROM `" . $wpdb->_escape($table) . "` WHERE product_id = %d OR product_id = 0",
+                $product_id
             )
         );
         
@@ -410,10 +435,10 @@ class PricingManager {
             
             // Create new price HTML with discount
             $new_price_html = '<span class="price">';
-            $new_price_html .= '<del><span class="woocommerce-Price-amount amount">' . wc_price($original_price) . '</span></del> ';
-            $new_price_html .= '<ins><span class="woocommerce-Price-amount amount">' . wc_price($best_price) . '</span></ins>';
+            $new_price_html .= '<del><span class="woocommerce-Price-amount amount">' . wp_kses_post(wc_price($original_price)) . '</span></del> ';
+            $new_price_html .= '<ins><span class="woocommerce-Price-amount amount">' . wp_kses_post(wc_price($best_price)) . '</span></ins>';
             if ( $discount_percentage > 0 ) {
-                $new_price_html .= ' <span class="b2b-discount-badge">(' . $discount_percentage . '% ' . __('off', 'b2b-commerce') . ')</span>';
+                $new_price_html .= ' <span class="b2b-discount-badge">(' . esc_html($discount_percentage) . '% ' . esc_html__('off', 'b2b-commerce') . ')</span>';
             }
             $new_price_html .= '</span>';
             
@@ -426,6 +451,11 @@ class PricingManager {
     // Enforce min/max quantity in cart
     public function enforce_min_max_quantity( $cart ) {
         if ( is_admin() ) return;
+        
+        // Validate user permissions
+        if ( ! $this->validate_user_permissions('read') ) {
+            return;
+        }
         
         // Prevent duplicate notices by using a session flag
         if (WC()->session && WC()->session->get('b2b_quantity_notices_processed')) {
@@ -549,42 +579,123 @@ class PricingManager {
 
     // Save pricing rule (add/edit)
     public function save_pricing_rule() {
-        if (!current_user_can('manage_woocommerce') || !isset($_POST['b2b_nonce']) || !wp_verify_nonce($_POST['b2b_nonce'], self::SAVE_PRICING_RULE_NONCE)) {
-            wp_die(__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+        // Check if this is a POST request
+        if (!isset($_SERVER['REQUEST_METHOD']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
+            wp_die(esc_html__('Invalid request method.', 'b2b-commerce'));
         }
+        
+        // Sanitize all POST data before validation
+        $sanitized_post = array_map('sanitize_text_field', $_POST);
+        
+        // Verify nonce and user permissions
+        if (!current_user_can('manage_woocommerce') || 
+            !isset($sanitized_post['b2b_nonce']) || 
+            !wp_verify_nonce($sanitized_post['b2b_nonce'], self::SAVE_PRICING_RULE_NONCE)) {
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+        }
+        
+        // Validate required fields
+        $required_fields = ['product_id', 'role', 'price', 'type'];
+        foreach ($required_fields as $field) {
+            if (!isset($sanitized_post[$field]) || empty($sanitized_post[$field])) {
+                wp_die(sprintf(__('Required field %s is missing.', 'b2b-commerce'), esc_html($field)));
+            }
+        }
+        
         global $wpdb;
         $table = $wpdb->prefix . self::PRICING_TABLE_NAME;
-        $data = [
-            'product_id' => intval($_POST['product_id']),
-            'role' => sanitize_text_field($_POST['role']),
-            'user_id' => intval($_POST['user_id']),
-            'group_id' => intval($_POST['group_id']),
-            'geo_zone' => sanitize_text_field($_POST['geo_zone']),
-            'start_date' => sanitize_text_field($_POST['start_date']),
-            'end_date' => sanitize_text_field($_POST['end_date']),
-            'min_qty' => intval($_POST['min_qty']),
-            'max_qty' => intval($_POST['max_qty']),
-            'price' => floatval($_POST['price']),
-            'type' => sanitize_text_field($_POST['type']),
-        ];
-        if (!empty($_POST['id'])) {
-            $wpdb->update($table, $data, ['id' => intval($_POST['id'])]);
-        } else {
-            $wpdb->insert($table, $data);
+        
+        // Sanitize and validate all input data using helper method
+        $validation_result = $this->sanitize_pricing_rule_data($sanitized_post);
+        
+        if (is_wp_error($validation_result)) {
+            $error_messages = $validation_result->get_error_messages();
+            wp_die(implode('<br>', array_map('esc_html', $error_messages)));
         }
-        wp_redirect(admin_url('admin.php?page=' . self::ADMIN_PAGE_SLUG));
+        
+        $data = $validation_result;
+        
+        // Add additional fields that aren't validated by the helper
+        $data['group_id'] = max(0, intval($sanitized_post['group_id'] ?? 0));
+        $data['geo_zone'] = sanitize_text_field($sanitized_post['geo_zone'] ?? '');
+        $data['start_date'] = $this->sanitize_date($sanitized_post['start_date'] ?? '');
+        $data['end_date'] = $this->sanitize_date($sanitized_post['end_date'] ?? '');
+        
+        // Validate date range if both dates are provided
+        if (!empty($data['start_date']) && !empty($data['end_date']) && $data['start_date'] > $data['end_date']) {
+            wp_die(esc_html__('Start date cannot be after end date.', 'b2b-commerce'));
+        }
+        
+        // Perform database operation
+        if (!empty($sanitized_post['id']) && is_numeric($sanitized_post['id'])) {
+            $rule_id = intval($sanitized_post['id']);
+            // Verify the rule exists and user has permission to edit it
+            $existing_rule = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM $table WHERE id = %d",
+                $rule_id
+            ));
+            
+            if (!$existing_rule) {
+                wp_die(esc_html__('Pricing rule not found.', 'b2b-commerce'));
+            }
+            
+            $result = $wpdb->update($table, $data, ['id' => $rule_id]);
+            if ($result === false) {
+                wp_die(esc_html__('Failed to update pricing rule.', 'b2b-commerce'));
+            }
+        } else {
+            $result = $wpdb->insert($table, $data);
+            if ($result === false) {
+                wp_die(esc_html__('Failed to create pricing rule.', 'b2b-commerce'));
+            }
+        }
+        
+        wp_redirect(admin_url('admin.php?page=' . self::ADMIN_PAGE_SLUG . '&updated=1'));
         exit;
     }
 
     // Delete pricing rule
     public function delete_pricing_rule() {
-        if (!current_user_can('manage_woocommerce') || !isset($_GET['_wpnonce']) || !wp_verify_nonce($_GET['_wpnonce'], self::DELETE_PRICING_RULE_NONCE)) {
-            wp_die(__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+        // Check if this is a GET request
+        if (!isset($_SERVER['REQUEST_METHOD']) || $_SERVER['REQUEST_METHOD'] !== 'GET') {
+            wp_die(esc_html__('Invalid request method.', 'b2b-commerce'));
         }
+        
+        // Sanitize all GET data before validation
+        $sanitized_get = array_map('sanitize_text_field', $_GET);
+        
+        // Verify nonce and user permissions
+        if (!current_user_can('manage_woocommerce') || 
+            !isset($sanitized_get['_wpnonce']) || 
+            !wp_verify_nonce($sanitized_get['_wpnonce'], self::DELETE_PRICING_RULE_NONCE)) {
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+        }
+        
+        // Validate rule ID
+        if (!isset($sanitized_get['id']) || !is_numeric($sanitized_get['id'])) {
+            wp_die(esc_html__('Invalid pricing rule ID.', 'b2b-commerce'));
+        }
+        
         global $wpdb;
         $table = $wpdb->prefix . self::PRICING_TABLE_NAME;
-        $wpdb->delete($table, ['id' => intval($_GET['id'])]);
-        wp_redirect(admin_url('admin.php?page=' . self::ADMIN_PAGE_SLUG));
+        $rule_id = intval($sanitized_get['id']);
+        
+        // Verify the rule exists before attempting to delete
+        $existing_rule = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table WHERE id = %d",
+            $rule_id
+        ));
+        
+        if (!$existing_rule) {
+            wp_die(esc_html__('Pricing rule not found.', 'b2b-commerce'));
+        }
+        
+        $result = $wpdb->delete($table, ['id' => $rule_id]);
+        if ($result === false) {
+            wp_die(esc_html__('Failed to delete pricing rule.', 'b2b-commerce'));
+        }
+        
+        wp_redirect(admin_url('admin.php?page=' . self::ADMIN_PAGE_SLUG . '&deleted=1'));
         exit;
     }
 
@@ -594,23 +705,34 @@ class PricingManager {
     public function enqueue_b2b_assets() {
         wp_enqueue_style('b2b-commerce', B2B_COMMERCE_URL . 'assets/css/b2b-commerce.css', [], B2B_COMMERCE_VERSION);
         wp_enqueue_script('b2b-commerce', B2B_COMMERCE_URL . 'assets/js/b2b-commerce.js', ['jquery'], B2B_COMMERCE_VERSION, true);
-        wp_localize_script('b2b-commerce', 'b2b_ajax', [
-            'ajaxurl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce(self::AJAX_NONCE)
-        ]);
+        
+        // Only localize script for logged-in users with appropriate permissions
+        if (is_user_logged_in()) {
+            wp_localize_script('b2b-commerce', 'b2b_ajax', [
+                'ajaxurl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce(self::AJAX_NONCE),
+                'is_admin' => current_user_can('manage_woocommerce'),
+                'user_id' => get_current_user_id()
+            ]);
+        }
     }
 
     // Advanced pricing features implementation
     public function tiered_pricing() {
+        // Validate user permissions
+        if ( ! $this->validate_user_permissions('read') ) {
+            return '';
+        }
+        
         global $wpdb;
         $table = $wpdb->prefix . self::PRICING_TABLE_NAME;
         $product_id = get_the_ID();
         $user_id = get_current_user_id();
         $user_roles = is_user_logged_in() ? (array) wp_get_current_user()->roles : [];
         
-        // Check if user is logged in and has B2B role
-        if (!is_user_logged_in()) {
-            return ''; // Don't show tiered pricing to non-logged-in users
+        // Validate product ID
+        if ( ! $product_id || $product_id <= 0 ) {
+            return '';
         }
         
         $user = wp_get_current_user();
@@ -649,7 +771,7 @@ class PricingManager {
             // If no product-specific rules, check for global rules
             if (empty($rules)) {
                 $rules = $wpdb->get_results(
-                    $wpdb->prepare("SELECT * FROM %i WHERE product_id = 0 ORDER BY role, min_qty ASC", $table)
+                    "SELECT * FROM `" . $wpdb->_escape($table) . "` WHERE product_id = 0 ORDER BY role, min_qty ASC"
                 );
             }
         } else {
@@ -666,7 +788,7 @@ class PricingManager {
             if (empty($rules)) {
                 $rules = $wpdb->get_results(
                     $wpdb->prepare(
-                        "SELECT * FROM $table WHERE product_id = 0 AND role IN ($user_role_placeholders) ORDER BY role, min_qty ASC",
+                        "SELECT * FROM `" . $wpdb->_escape($table) . "` WHERE product_id = 0 AND role IN ($user_role_placeholders) ORDER BY role, min_qty ASC",
                         $user_roles
                     )
                 );
@@ -676,9 +798,9 @@ class PricingManager {
         if (empty($rules)) return '';
         
         $output = '<div class="b2b-tiered-pricing">';
-        $output .= '<h4>' . __('Tiered Pricing', 'b2b-commerce') . '</h4>';
+        $output .= '<h4>' . esc_html__('Tiered Pricing', 'b2b-commerce') . '</h4>';
         $output .= '<table class="tiered-pricing-table">';
-        $output .= '<thead><tr><th>' . __('Quantity', 'b2b-commerce') . '</th><th>' . __('Price', 'b2b-commerce') . '</th><th>' . __('Savings', 'b2b-commerce') . '</th></tr></thead><tbody>';
+        $output .= '<thead><tr><th>' . esc_html__('Quantity', 'b2b-commerce') . '</th><th>' . esc_html__('Price', 'b2b-commerce') . '</th><th>' . esc_html__('Savings', 'b2b-commerce') . '</th></tr></thead><tbody>';
         
         foreach ($rules as $rule) {
             $original_price = (float) get_post_meta($product_id, '_price', true);
@@ -693,18 +815,18 @@ class PricingManager {
                 $display_price = (float) $rule->price;
                 $savings = $original_price - $display_price;
                 if ($savings > 0) {
-                    $savings_display = wc_price($savings) . ' ' . __('off', 'b2b-commerce');
+                    $savings_display = wp_kses_post(wc_price($savings)) . ' ' . esc_html__('off', 'b2b-commerce');
                 } elseif ($savings < 0) {
-                    $savings_display = wc_price(abs($savings)) . ' ' . __('more', 'b2b-commerce');
+                    $savings_display = wp_kses_post(wc_price(abs($savings))) . ' ' . esc_html__('more', 'b2b-commerce');
                 } else {
-                    $savings_display = __('Same price', 'b2b-commerce');
+                    $savings_display = esc_html__('Same price', 'b2b-commerce');
                 }
             }
             
             $output .= '<tr>';
             $output .= '<td>' . esc_html($rule->min_qty) . '+' . '</td>';
-            $output .= '<td>' . wc_price($display_price) . '</td>';
-            $output .= '<td>' . $savings_display . '</td>';
+            $output .= '<td>' . wp_kses_post(wc_price($display_price)) . '</td>';
+            $output .= '<td>' . esc_html($savings_display) . '</td>';
             $output .= '</tr>';
         }
         
@@ -753,16 +875,16 @@ class PricingManager {
         if (empty($rules)) return '';
         
         $output = '<div class="b2b-role-pricing">';
-        $output .= '<h4>' . __('Your Pricing', 'b2b-commerce') . '</h4>';
+        $output .= '<h4>' . esc_html__('Your Pricing', 'b2b-commerce') . '</h4>';
         $output .= '<ul>';
         
         foreach ($rules as $rule) {
             if ($rule->type === 'percentage') {
-                $label = abs($rule->price) . '% ' . __('discount','b2b-commerce');
+                $label = abs($rule->price) . '% ' . esc_html__('discount','b2b-commerce');
             } else {
-                $label = wc_price($rule->price) . ' ' . __('per unit', 'b2b-commerce');
+                $label = wp_kses_post(wc_price($rule->price)) . ' ' . esc_html__('per unit', 'b2b-commerce');
             }
-            $output .= '<li>' . esc_html(ucfirst(str_replace('_', ' ', $rule->role))) . ': ' . $label . '</li>';
+            $output .= '<li>' . esc_html(ucfirst(str_replace('_', ' ', $rule->role))) . ': ' . esc_html($label) . '</li>';
         }
         
         $output .= '</ul></div>';
@@ -785,8 +907,8 @@ class PricingManager {
         if (!$rule) return '';
         
         $output = '<div class="b2b-customer-pricing">';
-        $output .= '<h4>' . __('Your Special Price', 'b2b-commerce') . '</h4>';
-        $output .= '<p class="special-price">' . wc_price($rule->price) . '</p>';
+        $output .= '<h4>' . esc_html__('Your Special Price', 'b2b-commerce') . '</h4>';
+        $output .= '<p class="special-price">' . wp_kses_post(wc_price($rule->price)) . '</p>';
         $output .= '</div>';
         
         return $output;
@@ -809,9 +931,9 @@ class PricingManager {
         if (!$rule) return '';
         
         $output = '<div class="b2b-geo-pricing">';
-        $output .= '<h4>' . __('Regional Pricing', 'b2b-commerce') . '</h4>';
+        $output .= '<h4>' . esc_html__('Regional Pricing', 'b2b-commerce') . '</h4>';
         // translators: %1$s is the country/region name, %2$s is the formatted price
-        $output .= '<p>' . sprintf(__('Price for %1$s: %2$s', 'b2b-commerce'), esc_html($user_country), wc_price($rule->price)) . '</p>';
+        $output .= '<p>' . sprintf(esc_html__('Price for %1$s: %2$s', 'b2b-commerce'), esc_html($user_country), wp_kses_post(wc_price($rule->price))) . '</p>';
         $output .= '</div>';
         
         return $output;
@@ -831,11 +953,11 @@ class PricingManager {
         if (!$rule) return '';
         
         $output = '<div class="b2b-time-pricing">';
-        $output .= '<h4>' . __('Limited Time Offer', 'b2b-commerce') . '</h4>';
+        $output .= '<h4>' . esc_html__('Limited Time Offer', 'b2b-commerce') . '</h4>';
         // translators: %s is the formatted special price
-        $output .= '<p>' . sprintf(__('Special price: %s', 'b2b-commerce'), wc_price($rule->price)) . '</p>';
+        $output .= '<p>' . sprintf(esc_html__('Special price: %s', 'b2b-commerce'), wp_kses_post(wc_price($rule->price))) . '</p>';
         // translators: %s is the end date for the offer
-        $output .= '<p>' . sprintf(__('Valid until: %s', 'b2b-commerce'), esc_html($rule->end_date)) . '</p>';
+        $output .= '<p>' . sprintf(esc_html__('Valid until: %s', 'b2b-commerce'), esc_html($rule->end_date)) . '</p>';
         $output .= '</div>';
         
         return $output;
@@ -843,9 +965,9 @@ class PricingManager {
 
     // Render pricing-related widgets on product page
     public function render_pricing_widgets() {
-        echo $this->tiered_pricing();
-        echo $this->role_based_pricing();
-        echo $this->min_max_quantity();
+        echo wp_kses_post($this->tiered_pricing());
+        echo wp_kses_post($this->role_based_pricing());
+        echo wp_kses_post($this->min_max_quantity());
     }
 
     public function min_max_quantity() {
@@ -877,11 +999,11 @@ class PricingManager {
         $output = '<div class="b2b-quantity-limits">';
         if ($rule->min_qty > 1) {
             // translators: %s is the minimum quantity required
-            $output .= '<p><strong>' . __('Minimum Order:', 'b2b-commerce') . '</strong> ' . sprintf(__('%s units', 'b2b-commerce'), esc_html($rule->min_qty)) . '</p>';
+            $output .= '<p><strong>' . esc_html__('Minimum Order:', 'b2b-commerce') . '</strong> ' . sprintf(esc_html__('%s units', 'b2b-commerce'), esc_html($rule->min_qty)) . '</p>';
         }
         if ($rule->max_qty > 0) {
             // translators: %s is the maximum quantity allowed
-            $output .= '<p><strong>' . __('Maximum Order:', 'b2b-commerce') . '</strong> ' . sprintf(__('%s units', 'b2b-commerce'), esc_html($rule->max_qty)) . '</p>';
+            $output .= '<p><strong>' . esc_html__('Maximum Order:', 'b2b-commerce') . '</strong> ' . sprintf(esc_html__('%s units', 'b2b-commerce'), esc_html($rule->max_qty)) . '</p>';
         }
         $output .= '</div>';
         
@@ -892,5 +1014,281 @@ class PricingManager {
         // Quote functionality is disabled in the free version
         // This feature is available in the Pro version
         return '';
+    }
+    
+    /**
+     * Sanitize date input
+     * 
+     * @param string $date
+     * @return string
+     */
+    private function sanitize_date($date) {
+        if (empty($date)) {
+            return '';
+        }
+        
+        // Validate date format (YYYY-MM-DD)
+        $date_obj = DateTime::createFromFormat('Y-m-d', $date);
+        if ($date_obj && $date_obj->format('Y-m-d') === $date) {
+            return sanitize_text_field($date);
+        }
+        
+        return '';
+    }
+    
+    /**
+     * Validate user permissions for pricing operations
+     * 
+     * @param string $operation
+     * @return bool
+     */
+    private function validate_user_permissions($operation = 'read') {
+        switch ($operation) {
+            case 'create':
+            case 'update':
+            case 'delete':
+                return current_user_can('manage_woocommerce');
+            case 'read':
+            default:
+                return is_user_logged_in();
+        }
+    }
+    
+    /**
+     * Sanitize and validate pricing rule data
+     * 
+     * @param array $data
+     * @return array|WP_Error
+     */
+    private function sanitize_pricing_rule_data($data) {
+        $sanitized = [];
+        $errors = new WP_Error();
+        
+        // Product ID validation
+        if (isset($data['product_id'])) {
+            $product_id = intval($data['product_id']);
+            if ($product_id < 0) {
+                $errors->add('invalid_product_id', __('Product ID must be non-negative.', 'b2b-commerce'));
+            } else {
+                $sanitized['product_id'] = $product_id;
+            }
+        }
+        
+        // Role validation
+        if (isset($data['role'])) {
+            $role = sanitize_text_field($data['role']);
+            $allowed_roles = apply_filters('b2b_commerce_pro_roles', ['b2b_customer', 'wholesale_customer', 'distributor', 'retailer']);
+            if (!empty($role) && !in_array($role, $allowed_roles)) {
+                $errors->add('invalid_role', __('Invalid user role.', 'b2b-commerce'));
+            } else {
+                $sanitized['role'] = $role;
+            }
+        }
+        
+        // User ID validation
+        if (isset($data['user_id'])) {
+            $user_id = intval($data['user_id']);
+            if ($user_id < 0) {
+                $errors->add('invalid_user_id', __('User ID must be non-negative.', 'b2b-commerce'));
+            } else {
+                $sanitized['user_id'] = $user_id;
+            }
+        }
+        
+        // Price validation
+        if (isset($data['price'])) {
+            $price = floatval($data['price']);
+            if ($price < 0) {
+                $errors->add('invalid_price', __('Price cannot be negative.', 'b2b-commerce'));
+            } else {
+                $sanitized['price'] = $price;
+            }
+        }
+        
+        // Type validation
+        if (isset($data['type'])) {
+            $type = sanitize_text_field($data['type']);
+            if (!in_array($type, ['percentage', 'fixed'])) {
+                $errors->add('invalid_type', __('Invalid pricing type.', 'b2b-commerce'));
+            } else {
+                $sanitized['type'] = $type;
+            }
+        }
+        
+        // Quantity validation
+        if (isset($data['min_qty'])) {
+            $min_qty = intval($data['min_qty']);
+            if ($min_qty < 1) {
+                $errors->add('invalid_min_qty', __('Minimum quantity must be at least 1.', 'b2b-commerce'));
+            } else {
+                $sanitized['min_qty'] = $min_qty;
+            }
+        }
+        
+        if (isset($data['max_qty'])) {
+            $max_qty = intval($data['max_qty']);
+            if ($max_qty < 0) {
+                $errors->add('invalid_max_qty', __('Maximum quantity must be non-negative.', 'b2b-commerce'));
+            } else {
+                $sanitized['max_qty'] = $max_qty;
+            }
+        }
+        
+        // Validate quantity range
+        if (isset($sanitized['min_qty']) && isset($sanitized['max_qty']) && 
+            $sanitized['max_qty'] > 0 && $sanitized['min_qty'] > $sanitized['max_qty']) {
+            $errors->add('invalid_quantity_range', __('Minimum quantity cannot be greater than maximum quantity.', 'b2b-commerce'));
+        }
+        
+        if (!empty($errors->get_error_messages())) {
+            return $errors;
+        }
+        
+        return $sanitized;
+    }
+    
+    /**
+     * AJAX handler for getting pricing rules
+     */
+    public function ajax_get_pricing_rules() {
+        // Rate limiting check
+        if (!$this->check_rate_limit('ajax_get_pricing_rules')) {
+            wp_send_json_error(esc_html__('Too many requests. Please try again later.', 'b2b-commerce'));
+        }
+        
+        // Sanitize all POST data before validation
+        $sanitized_post = array_map('sanitize_text_field', $_POST);
+        
+        // Verify nonce
+        if (!isset($sanitized_post['nonce']) || !wp_verify_nonce($sanitized_post['nonce'], self::AJAX_NONCE)) {
+            wp_die(esc_html__('Security check failed.', 'b2b-commerce'));
+        }
+        
+        // Check user permissions
+        if (!current_user_can('manage_woocommerce')) {
+            wp_die(esc_html__('You do not have sufficient permissions.', 'b2b-commerce'));
+        }
+        
+        // Validate product ID
+        if (!isset($sanitized_post['product_id']) || !is_numeric($sanitized_post['product_id'])) {
+            wp_send_json_error(esc_html__('Invalid product ID.', 'b2b-commerce'));
+        }
+        
+        $product_id = intval($sanitized_post['product_id']);
+        
+        global $wpdb;
+        $table = $wpdb->prefix . self::PRICING_TABLE_NAME;
+        
+        $rules = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table WHERE product_id = %d OR product_id = 0 ORDER BY product_id DESC, min_qty ASC",
+            $product_id
+        ));
+        
+        wp_send_json_success($rules);
+    }
+    
+    /**
+     * AJAX handler for bulk operations
+     */
+    public function ajax_bulk_operations() {
+        // Rate limiting check
+        if (!$this->check_rate_limit('ajax_bulk_operations')) {
+            wp_send_json_error(esc_html__('Too many requests. Please try again later.', 'b2b-commerce'));
+        }
+        
+        // Sanitize all POST data before validation
+        $sanitized_post = array_map('sanitize_text_field', $_POST);
+        
+        // Verify nonce
+        if (!isset($sanitized_post['nonce']) || !wp_verify_nonce($sanitized_post['nonce'], self::AJAX_NONCE)) {
+            wp_die(esc_html__('Security check failed.', 'b2b-commerce'));
+        }
+        
+        // Check user permissions
+        if (!current_user_can('manage_woocommerce')) {
+            wp_die(esc_html__('You do not have sufficient permissions.', 'b2b-commerce'));
+        }
+        
+        // Validate action
+        if (!isset($sanitized_post['action_type']) || !in_array($sanitized_post['action_type'], ['delete', 'update_status'])) {
+            wp_send_json_error(esc_html__('Invalid action type.', 'b2b-commerce'));
+        }
+        
+        // Validate rule IDs
+        if (!isset($_POST['rule_ids']) || !is_array($_POST['rule_ids'])) {
+            wp_send_json_error(esc_html__('Invalid rule IDs.', 'b2b-commerce'));
+        }
+        
+        $rule_ids = array_map('intval', $_POST['rule_ids']);
+        $rule_ids = array_filter($rule_ids, function($id) { return $id > 0; });
+        
+        if (empty($rule_ids)) {
+            wp_send_json_error(esc_html__('No valid rule IDs provided.', 'b2b-commerce'));
+        }
+        
+        global $wpdb;
+        $table = $wpdb->prefix . self::PRICING_TABLE_NAME;
+        
+        $placeholders = implode(',', array_fill(0, count($rule_ids), '%d'));
+        
+        if ($sanitized_post['action_type'] === 'delete') {
+            $result = $wpdb->query($wpdb->prepare(
+                "DELETE FROM $table WHERE id IN ($placeholders)",
+                $rule_ids
+            ));
+            
+            if ($result === false) {
+                wp_send_json_error(esc_html__('Failed to delete rules.', 'b2b-commerce'));
+            }
+            
+            wp_send_json_success(sprintf(esc_html__('Successfully deleted %d rules.', 'b2b-commerce'), intval($result)));
+        }
+        
+        wp_send_json_error(esc_html__('Action not implemented.', 'b2b-commerce'));
+    }
+    
+    /**
+     * Check rate limiting for AJAX requests
+     * 
+     * @param string $action
+     * @return bool
+     */
+    private function check_rate_limit($action) {
+        $user_id = get_current_user_id();
+        $ip_address = $this->get_client_ip();
+        $key = 'b2b_rate_limit_' . $action . '_' . $user_id . '_' . $ip_address;
+        
+        $requests = get_transient($key);
+        if ($requests === false) {
+            $requests = 0;
+        }
+        
+        // Allow 10 requests per minute per user/IP combination
+        if ($requests >= 10) {
+            return false;
+        }
+        
+        set_transient($key, $requests + 1, 60); // 60 seconds
+        return true;
+    }
+    
+    /**
+     * Get client IP address
+     * 
+     * @return string
+     */
+    private function get_client_ip() {
+        $ip_keys = ['HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'];
+        foreach ($ip_keys as $key) {
+            if (array_key_exists($key, $_SERVER) === true) {
+                foreach (explode(',', $_SERVER[$key]) as $ip) {
+                    $ip = trim($ip);
+                    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false) {
+                        return $ip;
+                    }
+                }
+            }
+        }
+        return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
     }
 } 
