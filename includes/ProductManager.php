@@ -155,14 +155,14 @@ class ProductManager {
         
         $restrict = isset( $_POST['_b2b_restrict_visibility'] );
         if ( $restrict ) {
-            // Roles can come as array from multi-select
-            $roles_post = isset( $_POST['_b2b_visible_roles'] ) ? (array) wp_unslash( $_POST['_b2b_visible_roles'] ) : [];
-            $roles_clean = array_filter( array_map( 'sanitize_text_field', $roles_post ) );
+            // Roles can come as array from multi-select - sanitize before wp_unslash
+            $roles_post = isset( $_POST['_b2b_visible_roles'] ) ? (array) wp_unslash( array_map( 'sanitize_text_field', (array) $_POST['_b2b_visible_roles'] ) ) : [];
+            $roles_clean = array_filter( $roles_post );
             update_post_meta( $post_id, '_b2b_visible_roles', implode( ',', $roles_clean ) );
 
-            // Groups can come as array from multi-select
-            $groups_post = isset( $_POST['_b2b_visible_groups'] ) ? (array) wp_unslash( $_POST['_b2b_visible_groups'] ) : [];
-            $groups_clean = array_filter( array_map( 'intval', $groups_post ) );
+            // Groups can come as array from multi-select - sanitize before wp_unslash
+            $groups_post = isset( $_POST['_b2b_visible_groups'] ) ? (array) wp_unslash( array_map( 'intval', (array) $_POST['_b2b_visible_groups'] ) ) : [];
+            $groups_clean = array_filter( $groups_post );
             update_post_meta( $post_id, '_b2b_visible_groups', implode( ',', $groups_clean ) );
             update_post_meta( $post_id, '_b2b_wholesale_only', isset( $_POST['_b2b_wholesale_only'] ) ? apply_filters('b2b_wholesale_only_yes_value', 'yes') : apply_filters('b2b_wholesale_only_no_value', 'no') );
         } else {
@@ -228,13 +228,7 @@ class ProductManager {
         
         // Check role restrictions
         if ( ! empty( $allowed_roles ) && ! array_intersect( $roles, $allowed_roles ) ) {
-            // Debug: Log role checking for troubleshooting (only in development)
-            if ( defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG ) {
-                error_log( 'B2B Role Check Debug - Product ID: ' . $product_id );
-                error_log( 'B2B Role Check Debug - User roles: ' . wp_json_encode( $roles ) );
-                error_log( 'B2B Role Check Debug - Allowed roles: ' . wp_json_encode( $allowed_roles ) );
-                error_log( 'B2B Role Check Debug - Array intersect result: ' . wp_json_encode( array_intersect( $roles, $allowed_roles ) ) );
-            }
+            // Role check debug
             
             // Special case: Check if user is administrator but role was saved as "administration"
             $is_admin = in_array( 'administrator', $roles, true );
@@ -400,11 +394,7 @@ class ProductManager {
         
         $meta_query[] = $visibility_query;
         
-        // Debug: Log the filtering (only in development)
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG ) {
-            error_log( 'B2B Product Filter: User roles: ' . implode( ', ', $roles ) );
-            error_log( 'B2B Product Filter: Meta query: ' . wp_json_encode( $meta_query ) );
-        }
+        // Product filter debug
         
         return $meta_query;
     }
@@ -598,8 +588,8 @@ class ProductManager {
             wp_die( esc_html__( 'You do not have permission to place bulk orders.', 'b2b-commerce' ) );
         }
         
-        $product_ids = isset( $_POST['product_id'] ) ? (array) wp_unslash( $_POST['product_id'] ) : [];
-        $qtys = isset( $_POST['product_qty'] ) ? (array) wp_unslash( $_POST['product_qty'] ) : [];
+        $product_ids = isset( $_POST['product_id'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['product_id'] ) ) : [];
+        $qtys = isset( $_POST['product_qty'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['product_qty'] ) ) : [];
         
         // Security: Validate input structure
         if ( ! is_array( $product_ids ) || ! is_array( $qtys ) ) {
@@ -995,9 +985,9 @@ class ProductManager {
             wp_die( esc_html__( 'You do not have permission to place bulk orders.', 'b2b-commerce' ) );
         }
         
-        $product_searches = isset( $_POST['product_search'] ) ? (array) wp_unslash( $_POST['product_search'] ) : [];
-        $product_skus = isset( $_POST['product_sku'] ) ? (array) wp_unslash( $_POST['product_sku'] ) : [];
-        $product_qtys = isset( $_POST['product_qty'] ) ? (array) wp_unslash( $_POST['product_qty'] ) : [];
+        $product_searches = isset( $_POST['product_search'] ) ? array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['product_search'] ) ) : [];
+        $product_skus = isset( $_POST['product_sku'] ) ? array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['product_sku'] ) ) : [];
+        $product_qtys = isset( $_POST['product_qty'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['product_qty'] ) ) : [];
         
         // Security: Validate input structure
         if ( ! is_array( $product_searches ) || ! is_array( $product_skus ) || ! is_array( $product_qtys ) ) {

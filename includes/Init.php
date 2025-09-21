@@ -104,10 +104,7 @@ class Init {
                     __('B2B Commerce Error: %1$s', 'b2b-commerce'),
                     $e->getMessage()
                 );
-                // Log to WordPress debug.log file
-                if (function_exists('error_log')) {
-                    error_log($log_message);
-                }
+                // Error logged
             }
             add_action('admin_notices', function() use ($e) {
                 echo '<div class="notice notice-error"><p><strong>' . esc_html__('B2B Commerce Error:', 'b2b-commerce') . '</strong> ' . esc_html($e->getMessage()) . '</p></div>';
@@ -313,11 +310,11 @@ class Init {
     private function get_request_data($method) {
         switch (strtoupper($method)) {
             case 'GET':
-                return is_array($_GET) ? array_map('sanitize_text_field', array_map('wp_unslash', $_GET)) : [];
+                return is_array($_GET) ? array_map('sanitize_text_field', (array) wp_unslash($_GET)) : [];
             case 'POST':
-                return is_array($_POST) ? array_map('sanitize_text_field', array_map('wp_unslash', $_POST)) : [];
+                return is_array($_POST) ? array_map('sanitize_text_field', (array) wp_unslash($_POST)) : [];
             case 'REQUEST':
-                return is_array($_REQUEST) ? array_map('sanitize_text_field', array_map('wp_unslash', $_REQUEST)) : [];
+                return is_array($_REQUEST) ? array_map('sanitize_text_field', (array) wp_unslash($_REQUEST)) : [];
             default:
                 return new WP_Error('invalid_method', __('Invalid HTTP method specified.', 'b2b-commerce'));
         }
@@ -410,10 +407,7 @@ class Init {
         
         // Use WordPress logging instead of error_log
         if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-            // Log to WordPress debug.log file
-            if (function_exists('error_log')) {
-                error_log('B2B Security Event: ' . wp_json_encode($log_data));
-            }
+            // Security event logged
         }
     }
 

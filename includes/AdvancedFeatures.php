@@ -577,10 +577,7 @@ class AdvancedFeatures {
     public function handle_product_inquiry() {
         // Security: Verify nonce to prevent CSRF attacks
         if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'b2b_ajax_nonce' ) ) {
-            // Debug: Log nonce verification failure
-            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log( __('B2B Product Inquiry Debug - Nonce verification failed. Received nonce:', 'b2b-commerce') . ' ' . sanitize_text_field( wp_unslash( $_POST['nonce'] ?? 'none' ) ) );
-            }
+            // Nonce verification failed
             wp_send_json_error( __('Security check failed', 'b2b-commerce') );
             return;
         }
@@ -605,10 +602,7 @@ class AdvancedFeatures {
         
         // Security: Validate required fields
         if ( ! $product_id || ! $email || ! $message ) {
-            // Debug: Log the received data
-            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log( __('B2B Product Inquiry Debug - Missing required fields', 'b2b-commerce') );
-            }
+            // Missing required fields
             wp_send_json_error( __('Invalid request data - Missing required fields', 'b2b-commerce') );
             return;
         }
@@ -920,16 +914,11 @@ class AdvancedFeatures {
             global $wpdb;
             $table = $wpdb->prefix . 'b2b_pricing_rules';
             
-            // Debug: Log the POST data
-            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log(esc_html__('B2B Tiered Pricing: Processing tiered pricing for product', 'b2b-commerce') . " $post_id");
-            }
+            // Processing tiered pricing
             
             // Delete existing rules for this product
             $delete_result = $wpdb->delete($table, ['product_id' => $post_id], ['%d']);
-            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log(esc_html__('B2B Tiered Pricing: Deleted', 'b2b-commerce') . " $delete_result " . esc_html__('existing rules for product', 'b2b-commerce') . " $post_id");
-            }
+            // Rules deleted
             
             // Clear cache for this product
             wp_cache_delete( 'b2b_pricing_rules_product_' . $post_id, 'b2b_commerce' );
@@ -937,26 +926,18 @@ class AdvancedFeatures {
             
             // Insert new rules
             $insert_count = 0;
-            foreach ( wp_unslash( $_POST['b2b_tier_min_qty'] ?? [] ) as $role => $quantities) {
+            foreach ( array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['b2b_tier_min_qty'] ?? [] ) ) as $role => $quantities) {
                 $role = sanitize_text_field($role);
-                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                    error_log(esc_html__('B2B Tiered Pricing: Processing role:', 'b2b-commerce') . " $role");
-                }
+                // Processing role
                 if (is_array($quantities)) {
-                    if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                        error_log(esc_html__('B2B Tiered Pricing: Processing quantities for role', 'b2b-commerce') . " $role");
-                    }
+                    // Processing quantities
                     foreach ($quantities as $index => $quantity) {
-                        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                            error_log(esc_html__('B2B Tiered Pricing: Processing index', 'b2b-commerce') . " $index, " . esc_html__('quantity', 'b2b-commerce') . " $quantity");
-                        }
+                        // Processing index
                         if (!empty($quantity) && isset($_POST['b2b_tier_price'][$role][$index])) {
                             $price = wc_format_decimal( sanitize_text_field( wp_unslash( $_POST['b2b_tier_price'][$role][$index] ) ) );
                             $type = sanitize_text_field( wp_unslash( $_POST['b2b_tier_type'][$role][$index] ?? 'fixed' ) );
                             
-                            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                                error_log(esc_html__('B2B Tiered Pricing: Formatted price:', 'b2b-commerce') . " $price, " . esc_html__('type:', 'b2b-commerce') . " $type");
-                            }
+                            // Price formatted
                             
                             $insert_data = [
                                 'product_id' => $post_id,
@@ -966,21 +947,12 @@ class AdvancedFeatures {
                                 'type' => $type
                             ];
                             
-                            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                                error_log(esc_html__('B2B Tiered Pricing: Inserting rule for product', 'b2b-commerce') . " $post_id, " . esc_html__('role', 'b2b-commerce') . " $role");
-                            }
+                            // Inserting rule
                             
                             $result = $wpdb->insert($table, $insert_data, ['%d', '%s', '%d', '%f', '%s']);
                             
-                            // Debug logging
-                            if ($result === false) {
-                                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                                    error_log(esc_html__('B2B Tiered Pricing: Failed to insert rule for product', 'b2b-commerce') . " $post_id, " . esc_html__('role', 'b2b-commerce') . " $role, " . esc_html__('qty', 'b2b-commerce') . " $quantity, " . esc_html__('price', 'b2b-commerce') . " $price. " . esc_html__('Error:', 'b2b-commerce') . " " . esc_html($wpdb->last_error));
-                                }
-                            } else {
-                                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                                    error_log(esc_html__('B2B Tiered Pricing: Successfully inserted rule for product', 'b2b-commerce') . " $post_id, " . esc_html__('role', 'b2b-commerce') . " $role, " . esc_html__('qty', 'b2b-commerce') . " $quantity, " . esc_html__('price', 'b2b-commerce') . " $price. " . esc_html__('Insert ID:', 'b2b-commerce') . " " . $wpdb->insert_id);
-                                }
+                            // Rule inserted
+                            if ($result !== false) {
                                 $insert_count++;
                                 
                                 // Clear cache after successful insert
@@ -988,24 +960,16 @@ class AdvancedFeatures {
                                 wp_cache_delete( 'b2b_pricing_rules_all', 'b2b_commerce' );
                             }
                         } else {
-                            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                                error_log(esc_html__('B2B Tiered Pricing: Skipping index', 'b2b-commerce') . " $index - " . esc_html__('empty quantity or missing price', 'b2b-commerce'));
-                            }
+                            // Skipping empty quantity or missing price
                         }
                     }
                 } else {
-                    if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                        error_log(esc_html__('B2B Tiered Pricing: Quantities is not an array for role', 'b2b-commerce') . " $role");
-                    }
+                    // Quantities is not an array for role
                 }
             }
-            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log(esc_html__('B2B Tiered Pricing: Total rules inserted:', 'b2b-commerce') . " $insert_count");
-            }
+            // Total rules inserted: $insert_count
         } else {
-            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log(esc_html__('B2B Tiered Pricing: No tiered pricing data found in POST for product', 'b2b-commerce') . " $post_id");
-            }
+            // No tiered pricing data found
         }
     }
     
