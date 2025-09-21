@@ -23,7 +23,7 @@ class Reporting {
         }
         
         // Verify nonce with unique action name
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'b2b_get_user_analytics_nonce')) {
+        if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'b2b_get_user_analytics_nonce')) {
             wp_send_json_error(__('Security check failed', 'b2b-commerce'));
             return;
         }
@@ -47,7 +47,7 @@ class Reporting {
         }
         
         // Verify nonce with unique action name
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'b2b_get_performance_metrics_nonce')) {
+        if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'b2b_get_performance_metrics_nonce')) {
             wp_send_json_error(__('Security check failed', 'b2b-commerce'));
             return;
         }
@@ -71,13 +71,13 @@ class Reporting {
         }
         
         // Verify nonce with unique action name
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'b2b_export_report_nonce')) {
+        if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'b2b_export_report_nonce')) {
             wp_send_json_error(__('Security check failed', 'b2b-commerce'));
             return;
         }
         
         // Sanitize and validate input
-        $report_type = sanitize_text_field($_POST['report_type'] ?? '');
+        $report_type = sanitize_text_field(wp_unslash($_POST['report_type'] ?? ''));
         
         // Validate report type against allowed values
         $allowed_report_types = ['sales_summary', 'customer_analysis', 'product_performance', 'revenue_analysis'];
@@ -94,35 +94,35 @@ class Reporting {
     public function handle_report_generation() {
         // Security checks - check permissions first
         if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have sufficient permissions to perform this action.', 'b2b-commerce'));
+            wp_die(esc_html__('You do not have sufficient permissions to perform this action.', 'b2b-commerce'));
         }
         
         // Verify nonce
-        if (!isset($_POST['b2b_report_nonce']) || !wp_verify_nonce($_POST['b2b_report_nonce'], 'b2b_generate_report')) {
-            wp_die(__('Security check failed. Please try again.', 'b2b-commerce'));
+        if (!isset($_POST['b2b_report_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['b2b_report_nonce'])), 'b2b_generate_report')) {
+            wp_die(esc_html__('Security check failed. Please try again.', 'b2b-commerce'));
         }
         
         // Sanitize and validate inputs
-        $report_type = sanitize_text_field($_POST['report_type'] ?? '');
-        $date_range = sanitize_text_field($_POST['date_range'] ?? '');
-        $format = sanitize_text_field($_POST['format'] ?? '');
+        $report_type = sanitize_text_field(wp_unslash($_POST['report_type'] ?? ''));
+        $date_range = sanitize_text_field(wp_unslash($_POST['date_range'] ?? ''));
+        $format = sanitize_text_field(wp_unslash($_POST['format'] ?? ''));
         
         // Validate report type
         $allowed_report_types = ['sales_summary', 'customer_analysis', 'product_performance', 'revenue_analysis'];
         if (empty($report_type) || !in_array($report_type, $allowed_report_types)) {
-            wp_die(__('Invalid report type selected.', 'b2b-commerce'));
+            wp_die(esc_html__('Invalid report type selected.', 'b2b-commerce'));
         }
         
         // Validate date range
         $allowed_date_ranges = ['7', '30', '90', '365'];
         if (empty($date_range) || !in_array($date_range, $allowed_date_ranges)) {
-            wp_die(__('Invalid date range selected.', 'b2b-commerce'));
+            wp_die(esc_html__('Invalid date range selected.', 'b2b-commerce'));
         }
         
         // Validate format
         $allowed_formats = ['csv', 'pdf', 'excel'];
         if (empty($format) || !in_array($format, $allowed_formats)) {
-            wp_die(__('Invalid format selected.', 'b2b-commerce'));
+            wp_die(esc_html__('Invalid format selected.', 'b2b-commerce'));
         }
         
         // Process the report generation
@@ -147,11 +147,16 @@ class Reporting {
     public function analytics_page() {
         // Security check - ensure user has proper permissions
         if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'b2b-commerce'));
+        }
+        
+        // Verify nonce for GET requests if needed
+        if (isset($_GET['tab']) && !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'] ?? '')), 'b2b_analytics_nonce')) {
+            wp_die(esc_html__('Security check failed. Please try again.', 'b2b-commerce'));
         }
         
         // Sanitize and validate tab parameter
-        $tab = sanitize_text_field($_GET['tab'] ?? 'dashboard');
+        $tab = sanitize_text_field(wp_unslash($_GET['tab'] ?? 'dashboard'));
         $allowed_tabs = ['dashboard', 'sales', 'users', 'performance', 'reports'];
         if (!in_array($tab, $allowed_tabs)) {
             $tab = 'dashboard';
@@ -386,8 +391,13 @@ class Reporting {
         echo '<div class="b2b-reports">';
         echo '<h2>' . esc_html__('Reports', 'b2b-commerce') . '</h2>';
         
+        // Verify nonce for GET requests if needed
+        if (isset($_GET['report_generated']) && !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'] ?? '')), 'b2b_analytics_nonce')) {
+            wp_die(esc_html__('Security check failed. Please try again.', 'b2b-commerce'));
+        }
+        
         // Show success message if report was generated
-        $report_generated = sanitize_text_field($_GET['report_generated'] ?? '');
+        $report_generated = sanitize_text_field(wp_unslash($_GET['report_generated'] ?? ''));
         if ($report_generated === '1') {
             echo '<div class="notice notice-success"><p>' . esc_html__('Report generated successfully!', 'b2b-commerce') . '</p></div>';
         }
@@ -397,7 +407,7 @@ class Reporting {
         
         echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
         echo '<input type="hidden" name="action" value="b2b_generate_report">';
-        echo wp_nonce_field('b2b_generate_report', 'b2b_report_nonce', true, false);
+        echo wp_kses(wp_nonce_field('b2b_generate_report', 'b2b_report_nonce', true, false), ['input' => ['type' => [], 'name' => [], 'value' => []]]);
         
         echo '<p><label>' . esc_html__('Report Type:', 'b2b-commerce') . ' </label>';
         echo '<select name="report_type" required>';
@@ -469,7 +479,7 @@ class Reporting {
             'meta_query' => [
                 [
                     'key' => 'last_activity',
-                    'value' => date('Y-m-d', strtotime(apply_filters('b2b_active_user_period', '-30 days'))),
+                    'value' => gmdate('Y-m-d', strtotime(apply_filters('b2b_active_user_period', '-30 days'))),
                     'compare' => '>=',
                     'type' => 'DATE'
                 ]
@@ -525,7 +535,7 @@ class Reporting {
             'meta_query' => [
                 [
                     'key' => 'last_activity',
-                    'value' => date('Y-m-d', strtotime(apply_filters('b2b_active_user_period', '-30 days'))),
+                    'value' => gmdate('Y-m-d', strtotime(apply_filters('b2b_active_user_period', '-30 days'))),
                     'compare' => '>=',
                     'type' => 'DATE'
                 ]

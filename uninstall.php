@@ -19,18 +19,45 @@ foreach ( $options as $opt ) {
 }
 
 // Remove user meta
-global $wpdb;
 $meta_keys = [
     'company_name', 'business_type', 'tax_id', 'b2b_approval_status',
     'b2b_credit_limit', 'b2b_payment_terms', 'b2b_tax_exempt', 'b2b_tax_exempt_number',
 ];
-foreach ( $meta_keys as $key ) {
-    $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->usermeta} WHERE meta_key = %s", $key ) );
+
+// Get all users and delete their meta
+$users = get_users( array( 'fields' => 'ID' ) );
+foreach ( $users as $user_id ) {
+    foreach ( $meta_keys as $key ) {
+        delete_user_meta( $user_id, $key );
+    }
 }
 
 // Remove term meta for groups and categories
-$wpdb->query( $wpdb->prepare("DELETE FROM {$wpdb->termmeta} WHERE meta_key IN (%s, %s)", 'b2b_cat_roles', 'b2b_cat_groups') );
+$terms = get_terms( array(
+    'taxonomy'   => array( 'product_cat', 'product_tag' ),
+    'hide_empty' => false,
+    'fields'     => 'ids',
+) );
+
+if ( ! is_wp_error( $terms ) ) {
+    foreach ( $terms as $term_id ) {
+        delete_term_meta( $term_id, 'b2b_cat_roles' );
+        delete_term_meta( $term_id, 'b2b_cat_groups' );
+    }
+}
 
 // Drop custom pricing rules table
+global $wpdb;
 $table = $wpdb->prefix . 'b2b_pricing_rules';
-$wpdb->query("DROP TABLE IF EXISTS `" . $wpdb->_escape($table) . "`"); 
+
+// Check if table exists using WordPress database abstraction
+$table_exists = $wpdb->get_var( $wpdb->prepare( 
+    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = %s AND table_name = %s", 
+    DB_NAME,
+    $table 
+) );
+
+if ( $table_exists ) {
+    // Use WordPress database abstraction for schema changes
+    $wpdb->query( $wpdb->prepare( "DROP TABLE IF EXISTS `%s`", $table ) );
+} 

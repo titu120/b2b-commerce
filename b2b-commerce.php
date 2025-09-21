@@ -1,11 +1,10 @@
 <?php
 /*
 Plugin Name: B2B Commerce
-Plugin URI: https://yourwebsite.com/b2b-commerce
 Description: Free WooCommerce B2B & Wholesale Plugin with user management, pricing, and product control. Upgrade to B2B Commerce for quotes, product inquiries, and bulk calculator features.
 Version: 1.0.0
 Author: Your Name
-Author URI: https://yourwebsite.com
+Author URI: https://softivus.com
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: b2b-commerce
@@ -21,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 if ( ! function_exists( 'b2b_prevent_direct_access' ) ) {
     function b2b_prevent_direct_access() {
         if ( ! defined( 'ABSPATH' ) || ! current_user_can( 'manage_options' ) ) {
-            wp_die( __( 'Access denied. This function requires administrator privileges.', 'b2b-commerce' ) );
+            wp_die( esc_html__( 'Access denied. This function requires administrator privileges.', 'b2b-commerce' ) );
         }
     }
 }
@@ -80,7 +79,7 @@ function b2b_validate_security($nonce_name, $capability = 'manage_options', $met
  */
 function b2b_check_rate_limit($action, $limit = 10, $window = 300) {
     $user_id = get_current_user_id();
-    $ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field($_SERVER['REMOTE_ADDR']) : 'unknown';
+    $ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : 'unknown';
     $key = 'b2b_rate_limit_' . $action . '_' . $user_id . '_' . $ip;
     
     $attempts = get_transient($key);
@@ -112,7 +111,7 @@ function b2b_validate_frontend_security($nonce_name, $action = 'general') {
     }
     
     // Verify nonce
-    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], $nonce_name)) {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), $nonce_name)) {
         return new WP_Error('nonce_failed', __('Security check failed. Please refresh the page and try again.', 'b2b-commerce'));
     }
     
@@ -161,10 +160,7 @@ function autoload_b2b_commerce() {
 // Register the autoloader
 autoload_b2b_commerce();
 
-// Load text domain early
-add_action( 'plugins_loaded', function() {
-    load_plugin_textdomain( 'b2b-commerce', false, dirname( B2B_COMMERCE_BASENAME ) . '/languages' );
-});
+// Text domain is automatically loaded by WordPress for plugins hosted on WordPress.org
 
 // Bootstrap the plugin
 add_action( 'plugins_loaded', function() {
@@ -180,8 +176,10 @@ add_action( 'plugins_loaded', function() {
         try {
             B2B\Init::instance();
         } catch ( Exception $e ) {
-            // Log error but don't break the site
-            error_log( 'B2B Commerce Error: ' . $e->getMessage() );
+            // Log error for debugging (remove in production)
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log( 'B2B Commerce Error: ' . $e->getMessage() );
+            }
         }
     } else {
         // Show admin notice if Init class is missing
@@ -215,8 +213,10 @@ register_activation_hook( __FILE__, function() {
         create_b2b_pages();
         
     } catch ( Exception $e ) {
-        // Log activation error
-        error_log( 'B2B Commerce Activation Error: ' . $e->getMessage() );
+        // Log activation error for debugging (remove in production)
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log( 'B2B Commerce Activation Error: ' . $e->getMessage() );
+        }
     }
 } );
 
@@ -351,8 +351,10 @@ register_deactivation_hook( __FILE__, function() {
             B2B\UserManager::remove_roles();
         }
     } catch ( Exception $e ) {
-        // Log deactivation error
-        error_log( 'B2B Commerce Deactivation Error: ' . $e->getMessage() );
+        // Log deactivation error for debugging (remove in production)
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log( 'B2B Commerce Deactivation Error: ' . $e->getMessage() );
+        }
     }
 } );
 
@@ -372,7 +374,7 @@ add_action('wp_ajax_b2b_approve_user', function() {
             return;
         }
         
-        $user_id = b2b_sanitize_input($_POST['user_id'], 'int');
+        $user_id = b2b_sanitize_input(sanitize_text_field(wp_unslash($_POST['user_id'])), 'int');
         
         // Additional validation for user_id
         if ($user_id <= 0) {
@@ -427,7 +429,7 @@ add_action('wp_ajax_b2b_reject_user', function() {
             return;
         }
         
-        $user_id = b2b_sanitize_input($_POST['user_id'], 'int');
+        $user_id = b2b_sanitize_input(sanitize_text_field(wp_unslash($_POST['user_id'])), 'int');
         
         // Additional validation for user_id
         if ($user_id <= 0) {
@@ -507,16 +509,16 @@ add_action('wp_ajax_b2b_save_pricing_rule', function() {
         
         $data = array(
             'product_id' => 0,
-            'role' => b2b_sanitize_input($_POST['role'], 'text'),
+            'role' => b2b_sanitize_input(sanitize_text_field(wp_unslash($_POST['role'] ?? '')), 'text'),
             'user_id' => 0,
             'group_id' => 0,
             'geo_zone' => '',
             'start_date' => '',
             'end_date' => '',
-            'min_qty' => b2b_sanitize_input($_POST['min_qty'], 'int'),
+            'min_qty' => b2b_sanitize_input(sanitize_text_field(wp_unslash($_POST['min_qty'] ?? '')), 'int'),
             'max_qty' => 0,
-            'price' => b2b_sanitize_input($_POST['price'], 'float'),
-            'type' => b2b_sanitize_input($_POST['type'], 'text')
+            'price' => b2b_sanitize_input(sanitize_text_field(wp_unslash($_POST['price'] ?? '')), 'float'),
+            'type' => b2b_sanitize_input(sanitize_text_field(wp_unslash($_POST['type'] ?? '')), 'text')
         );
         
         $result = $wpdb->insert($table, $data);
@@ -549,7 +551,7 @@ add_action('wp_ajax_b2b_delete_pricing_rule', function() {
         
         global $wpdb;
         $table = $wpdb->prefix . 'b2b_pricing_rules';
-        $rule_id = b2b_sanitize_input($_POST['rule_id'], 'int');
+        $rule_id = b2b_sanitize_input(sanitize_text_field(wp_unslash($_POST['rule_id'] ?? '')), 'int');
         
         $result = $wpdb->delete($table, array('id' => $rule_id), array('%d'));
         
@@ -579,7 +581,7 @@ add_action('wp_ajax_b2b_export_data', function() {
         return;
     }
     
-    $type = b2b_sanitize_input($_POST['type'], 'text');
+    $type = b2b_sanitize_input(sanitize_text_field(wp_unslash($_POST['type'] ?? '')), 'text');
     
     switch ($type) {
         case 'users':
@@ -611,6 +613,7 @@ add_action('wp_ajax_b2b_export_data', function() {
                 wp_send_json_error(__('Pricing table not found', 'b2b-commerce'));
                 return;
             }
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             $rules = $wpdb->get_results("SELECT * FROM `{$table}`");
             $csv_data = __("Customer Type,Pricing Type,Value,Min Quantity", 'b2b-commerce') . "\n";
             
@@ -670,20 +673,20 @@ add_action('wp_ajax_b2b_download_template', function() {
     // Use centralized security validation for GET requests
     $security_check = b2b_validate_security('b2b_template_nonce', 'manage_options', 'GET');
     if (is_wp_error($security_check)) {
-        wp_die($security_check->get_error_message());
+        wp_die(esc_html($security_check->get_error_message()));
     }
     
     // Validate and sanitize input
     if (!isset($_GET['type']) || empty($_GET['type'])) {
-        wp_die(__('Missing template type.', 'b2b-commerce'));
+        wp_die(esc_html__('Missing template type.', 'b2b-commerce'));
     }
     
-    $type = b2b_sanitize_input($_GET['type'], 'text');
+    $type = b2b_sanitize_input(sanitize_text_field(wp_unslash($_GET['type'] ?? '')), 'text');
     
     // Validate type parameter
     $allowed_types = ['users', 'pricing'];
     if (!in_array($type, $allowed_types)) {
-        wp_die(__('Invalid template type.', 'b2b-commerce'));
+        wp_die(esc_html__('Invalid template type.', 'b2b-commerce'));
     }
     
     switch ($type) {
@@ -699,12 +702,12 @@ add_action('wp_ajax_b2b_download_template', function() {
             break;
             
         default:
-            wp_die(__('Invalid template type.', 'b2b-commerce'));
+            wp_die(esc_html__('Invalid template type.', 'b2b-commerce'));
     }
     
     header('Content-Type: text/csv');
     header('Content-Disposition: attachment; filename="b2b_' . esc_attr($type) . '_template.csv"');
-    echo $csv_data;
+    echo esc_html($csv_data);
     exit;
 });
 
@@ -823,12 +826,12 @@ add_action('wp_ajax_b2b_import_demo_data', function() {
 // Enqueue modern admin CSS and JS for all B2B Commerce admin pages
 add_action('admin_enqueue_scripts', function($hook) {
     // Security check: only load on B2B admin pages
-    if (!isset($_GET['page']) || strpos(sanitize_text_field($_GET['page']), 'b2b-') !== 0) {
+    if (!isset($_GET['page']) || strpos(sanitize_text_field(wp_unslash($_GET['page'] ?? '')), 'b2b-') !== 0) {
         return;
     }
     
     // Additional security: validate page parameter
-    $page = sanitize_text_field($_GET['page']);
+    $page = sanitize_text_field(wp_unslash($_GET['page'] ?? ''));
     if (empty($page) || !preg_match('/^[a-zA-Z0-9_-]+$/', $page)) {
         return;
     }
@@ -897,6 +900,7 @@ function b2b_handle_frontend_registration() {
         $required_fields = ['username', 'email', 'password', 'first_name', 'last_name', 'company_name'];
         foreach ($required_fields as $field) {
             if (!isset($_POST[$field]) || empty($_POST[$field])) {
+                // translators: %s is the name of the missing required field
                 wp_send_json_error(sprintf(__('Missing required field: %s', 'b2b-commerce'), $field));
                 return;
             }
@@ -904,11 +908,11 @@ function b2b_handle_frontend_registration() {
         
         // Sanitize input data
         $user_data = array(
-            'user_login' => b2b_sanitize_input($_POST['username'], 'text'),
-            'user_email' => b2b_sanitize_input($_POST['email'], 'email'),
-            'user_pass' => $_POST['password'], // Password will be hashed by WordPress
-            'first_name' => b2b_sanitize_input($_POST['first_name'], 'text'),
-            'last_name' => b2b_sanitize_input($_POST['last_name'], 'text'),
+            'user_login' => b2b_sanitize_input(sanitize_text_field(wp_unslash($_POST['username'] ?? '')), 'text'),
+            'user_email' => b2b_sanitize_input(sanitize_email(wp_unslash($_POST['email'] ?? '')), 'email'),
+            'user_pass' => sanitize_text_field(wp_unslash($_POST['password'] ?? '')), // Password will be hashed by WordPress
+            'first_name' => b2b_sanitize_input(sanitize_text_field(wp_unslash($_POST['first_name'] ?? '')), 'text'),
+            'last_name' => b2b_sanitize_input(sanitize_text_field(wp_unslash($_POST['last_name'] ?? '')), 'text'),
             'role' => 'b2b_customer'
         );
         
@@ -956,16 +960,16 @@ function b2b_handle_frontend_registration() {
             'last_name' => $user_data['last_name']
         ));
         
-        update_user_meta($user_id, 'company_name', b2b_sanitize_input($_POST['company_name'], 'text'));
+        update_user_meta($user_id, 'company_name', b2b_sanitize_input(sanitize_text_field(wp_unslash($_POST['company_name'] ?? '')), 'text'));
         update_user_meta($user_id, 'b2b_approval_status', 'pending');
         
         // Add additional fields if provided
         if (isset($_POST['phone'])) {
-            update_user_meta($user_id, 'phone', b2b_sanitize_input($_POST['phone'], 'text'));
+            update_user_meta($user_id, 'phone', b2b_sanitize_input(sanitize_text_field(wp_unslash($_POST['phone'] ?? '')), 'text'));
         }
         
         if (isset($_POST['business_type'])) {
-            update_user_meta($user_id, 'business_type', b2b_sanitize_input($_POST['business_type'], 'text'));
+            update_user_meta($user_id, 'business_type', b2b_sanitize_input(sanitize_text_field(wp_unslash($_POST['business_type'] ?? '')), 'text'));
         }
         
         wp_send_json_success(__('Registration successful! Your account is pending approval.', 'b2b-commerce'));

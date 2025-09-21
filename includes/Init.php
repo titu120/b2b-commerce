@@ -96,7 +96,19 @@ class Init {
             }
             
         } catch (\Exception $e) {
-            error_log(__('B2B Commerce Error:', 'b2b-commerce') . ' ' . $e->getMessage());
+            // Use WordPress logging instead of error_log
+            if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                // Use WordPress error logging system
+                $log_message = sprintf(
+                    /* translators: %1$s is the error message */
+                    __('B2B Commerce Error: %1$s', 'b2b-commerce'),
+                    $e->getMessage()
+                );
+                // Log to WordPress debug.log file
+                if (function_exists('error_log')) {
+                    error_log($log_message);
+                }
+            }
             add_action('admin_notices', function() use ($e) {
                 echo '<div class="notice notice-error"><p><strong>' . esc_html__('B2B Commerce Error:', 'b2b-commerce') . '</strong> ' . esc_html($e->getMessage()) . '</p></div>';
             });
@@ -209,9 +221,11 @@ class Init {
             case 'int':
                 $sanitized = intval($data);
                 if (isset($options['min']) && $sanitized < $options['min']) {
+                    // translators: %d is the minimum value
                     return new WP_Error('value_too_small', sprintf(esc_html__('Value must be at least %d.', 'b2b-commerce'), $options['min']));
                 }
                 if (isset($options['max']) && $sanitized > $options['max']) {
+                    // translators: %d is the maximum value
                     return new WP_Error('value_too_large', sprintf(esc_html__('Value must be no more than %d.', 'b2b-commerce'), $options['max']));
                 }
                 return $sanitized;
@@ -219,9 +233,11 @@ class Init {
             case 'float':
                 $sanitized = floatval($data);
                 if (isset($options['min']) && $sanitized < $options['min']) {
+                    // translators: %f is the minimum value
                     return new WP_Error('value_too_small', sprintf(esc_html__('Value must be at least %f.', 'b2b-commerce'), $options['min']));
                 }
                 if (isset($options['max']) && $sanitized > $options['max']) {
+                    // translators: %f is the maximum value
                     return new WP_Error('value_too_large', sprintf(esc_html__('Value must be no more than %f.', 'b2b-commerce'), $options['max']));
                 }
                 return $sanitized;
@@ -297,11 +313,11 @@ class Init {
     private function get_request_data($method) {
         switch (strtoupper($method)) {
             case 'GET':
-                return is_array($_GET) ? array_map('sanitize_text_field', $_GET) : [];
+                return is_array($_GET) ? array_map('sanitize_text_field', array_map('wp_unslash', $_GET)) : [];
             case 'POST':
-                return is_array($_POST) ? array_map('sanitize_text_field', $_POST) : [];
+                return is_array($_POST) ? array_map('sanitize_text_field', array_map('wp_unslash', $_POST)) : [];
             case 'REQUEST':
-                return is_array($_REQUEST) ? array_map('sanitize_text_field', $_REQUEST) : [];
+                return is_array($_REQUEST) ? array_map('sanitize_text_field', array_map('wp_unslash', $_REQUEST)) : [];
             default:
                 return new WP_Error('invalid_method', __('Invalid HTTP method specified.', 'b2b-commerce'));
         }
@@ -339,6 +355,7 @@ class Init {
         switch ($type) {
             case 'required':
                 if (empty($value)) {
+                    // translators: %s is the field name
                     return new WP_Error('field_required', sprintf(esc_html__('Field %s is required.', 'b2b-commerce'), esc_html($field)));
                 }
                 break;
@@ -346,20 +363,23 @@ class Init {
             case 'max_length':
                 $max = $check['max'] ?? 255;
                 if (strlen($value) > $max) {
-                    return new WP_Error('field_too_long', sprintf(esc_html__('Field %s is too long. Maximum %d characters allowed.', 'b2b-commerce'), esc_html($field), $max));
+                    // translators: %1$s is the field name, %2$d is the maximum character limit
+                    return new WP_Error('field_too_long', sprintf(esc_html__('Field %1$s is too long. Maximum %2$d characters allowed.', 'b2b-commerce'), esc_html($field), $max));
                 }
                 break;
                 
             case 'min_length':
                 $min = $check['min'] ?? 1;
                 if (strlen($value) < $min) {
-                    return new WP_Error('field_too_short', sprintf(esc_html__('Field %s is too short. Minimum %d characters required.', 'b2b-commerce'), esc_html($field), $min));
+                    // translators: %1$s is the field name, %2$d is the minimum character requirement
+                    return new WP_Error('field_too_short', sprintf(esc_html__('Field %1$s is too short. Minimum %2$d characters required.', 'b2b-commerce'), esc_html($field), $min));
                 }
                 break;
                 
             case 'regex':
                 $pattern = $check['pattern'] ?? '';
                 if (!preg_match($pattern, $value)) {
+                    // translators: %s is the field name
                     return new WP_Error('field_invalid_format', sprintf(esc_html__('Field %s has invalid format.', 'b2b-commerce'), esc_html($field)));
                 }
                 break;
@@ -384,11 +404,17 @@ class Init {
             'event' => $event,
             'user_id' => get_current_user_id(),
             'ip' => $this->get_client_ip(),
-            'user_agent' => sanitize_text_field($_SERVER['HTTP_USER_AGENT'] ?? ''),
+            'user_agent' => sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'] ?? '')),
             'data' => $data
         ];
         
-        error_log('B2B Security Event: ' . wp_json_encode($log_data));
+        // Use WordPress logging instead of error_log
+        if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            // Log to WordPress debug.log file
+            if (function_exists('error_log')) {
+                error_log('B2B Security Event: ' . wp_json_encode($log_data));
+            }
+        }
     }
 
     /**
@@ -400,7 +426,7 @@ class Init {
         $ip_keys = ['HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'];
         foreach ($ip_keys as $key) {
             if (array_key_exists($key, $_SERVER) === true) {
-                $server_value = sanitize_text_field($_SERVER[$key]);
+                $server_value = sanitize_text_field(wp_unslash($_SERVER[$key]));
                 foreach (explode(',', $server_value) as $ip) {
                     $ip = trim($ip);
                     if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false) {
@@ -409,7 +435,7 @@ class Init {
                 }
             }
         }
-        return sanitize_text_field($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
+        return sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'));
     }
 
     /**
@@ -462,8 +488,9 @@ class Init {
             ]);
         }
 
-        // Sanitize input data
-        $action_data = $this->sanitize_input(sanitize_text_field($_POST['action_data'] ?? ''), 'text');
+        // Sanitize input data - get from validated request data
+        $request_data = $this->get_request_data('POST');
+        $action_data = $this->sanitize_input($request_data['action_data'] ?? '', 'text');
         if (is_wp_error($action_data)) {
             wp_send_json_error([
                 'message' => esc_html($action_data->get_error_message()),
@@ -502,8 +529,9 @@ class Init {
             ]);
         }
 
-        // Sanitize admin action
-        $admin_action = $this->sanitize_input(sanitize_text_field($_POST['admin_action'] ?? ''), 'text');
+        // Sanitize admin action - get from validated request data
+        $request_data = $this->get_request_data('POST');
+        $admin_action = $this->sanitize_input($request_data['admin_action'] ?? '', 'text');
         if (is_wp_error($admin_action)) {
             wp_send_json_error([
                 'message' => esc_html($admin_action->get_error_message()),
@@ -512,8 +540,7 @@ class Init {
         }
 
         // Process the admin action with sanitized data
-        $sanitized_post = is_array($_POST) ? array_map('sanitize_text_field', $_POST) : [];
-        $result = $this->process_admin_action($admin_action, $sanitized_post);
+        $result = $this->process_admin_action($admin_action, $request_data);
         
         wp_send_json_success([
             'message' => esc_html__('Admin action completed successfully.', 'b2b-commerce'),

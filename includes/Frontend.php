@@ -287,39 +287,39 @@ class Frontend {
         
         // Verify user is logged in
         if ( ! is_user_logged_in() ) {
-            wp_die( __('You must be logged in to download invoices.', 'b2b-commerce'), __('Access Denied', 'b2b-commerce'), array( 'response' => 403 ) );
+            wp_die( esc_html__( 'You must be logged in to download invoices.', 'b2b-commerce' ), esc_html__( 'Access Denied', 'b2b-commerce' ), array( 'response' => 403 ) );
         }
         
         // Verify nonce for security
-        if ( ! isset( $_GET['b2b_invoice_nonce'] ) || ! wp_verify_nonce( $_GET['b2b_invoice_nonce'], 'b2b_invoice_download_' . intval( $_GET['b2b_invoice'] ) ) ) {
-            wp_die( __('Security check failed. Invalid request.', 'b2b-commerce'), __('Security Error', 'b2b-commerce'), array( 'response' => 403 ) );
+        if ( ! isset( $_GET['b2b_invoice_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['b2b_invoice_nonce'] ) ), 'b2b_invoice_download_' . intval( $_GET['b2b_invoice'] ) ) ) {
+            wp_die( esc_html__( 'Security check failed. Invalid request.', 'b2b-commerce' ), esc_html__( 'Security Error', 'b2b-commerce' ), array( 'response' => 403 ) );
         }
         
         // Check user permissions - user must be able to read orders
         if ( ! current_user_can( 'read' ) ) {
-            wp_die( __('You do not have permission to download invoices.', 'b2b-commerce'), __('Permission Denied', 'b2b-commerce'), array( 'response' => 403 ) );
+            wp_die( esc_html__( 'You do not have permission to download invoices.', 'b2b-commerce' ), esc_html__( 'Permission Denied', 'b2b-commerce' ), array( 'response' => 403 ) );
         }
         
         // Check WooCommerce availability
         if ( ! class_exists('WooCommerce') || ! function_exists('wc_get_order') ) {
-            wp_die( __('WooCommerce is required for invoice functionality.', 'b2b-commerce'), __('Plugin Required', 'b2b-commerce'), array( 'response' => 500 ) );
+            wp_die( esc_html__( 'WooCommerce is required for invoice functionality.', 'b2b-commerce' ), esc_html__( 'Plugin Required', 'b2b-commerce' ), array( 'response' => 500 ) );
         }
         
         // Sanitize and validate order ID
         $order_id = intval( $_GET['b2b_invoice'] );
         if ( $order_id <= 0 ) {
-            wp_die( __('Invalid order ID provided.', 'b2b-commerce'), __('Invalid Request', 'b2b-commerce'), array( 'response' => 400 ) );
+            wp_die( esc_html__( 'Invalid order ID provided.', 'b2b-commerce' ), esc_html__( 'Invalid Request', 'b2b-commerce' ), array( 'response' => 400 ) );
         }
         
         // Get order and verify ownership
         $order = wc_get_order( $order_id );
         if ( ! $order ) {
-            wp_die( __('Order not found.', 'b2b-commerce'), __('Not Found', 'b2b-commerce'), array( 'response' => 404 ) );
+            wp_die( esc_html__( 'Order not found.', 'b2b-commerce' ), esc_html__( 'Not Found', 'b2b-commerce' ), array( 'response' => 404 ) );
         }
         
         // Verify order belongs to current user
         if ( $order->get_user_id() != get_current_user_id() ) {
-            wp_die( __('You can only download invoices for your own orders.', 'b2b-commerce'), __('Access Denied', 'b2b-commerce'), array( 'response' => 403 ) );
+            wp_die( esc_html__( 'You can only download invoices for your own orders.', 'b2b-commerce' ), esc_html__( 'Access Denied', 'b2b-commerce' ), array( 'response' => 403 ) );
         }
         
         // Generate and output invoice
@@ -401,7 +401,7 @@ class Frontend {
         }
         
         // Verify nonce
-        if ( ! wp_verify_nonce( $_POST['b2b_account_nonce'], 'b2b_account_update' ) ) {
+        if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['b2b_account_nonce'] ) ), 'b2b_account_update' ) ) {
             add_action( 'wp_footer', function() {
                 echo '<div class="b2b-error-message" style="position: fixed; top: 20px; right: 20px; background: #f8d7da; color: #721c24; padding: 15px; border-radius: 4px; z-index: 9999;">' . esc_html__('Security check failed. Please try again.', 'b2b-commerce') . '</div>';
             });
@@ -427,9 +427,9 @@ class Frontend {
         $user_id = get_current_user_id();
         
         // Sanitize and validate input data
-        $company_name = isset( $_POST['company_name'] ) ? sanitize_text_field( $_POST['company_name'] ) : '';
-        $business_type = isset( $_POST['business_type'] ) ? sanitize_text_field( $_POST['business_type'] ) : '';
-        $tax_id = isset( $_POST['tax_id'] ) ? sanitize_text_field( $_POST['tax_id'] ) : '';
+        $company_name = isset( $_POST['company_name'] ) ? sanitize_text_field( wp_unslash( $_POST['company_name'] ) ) : '';
+        $business_type = isset( $_POST['business_type'] ) ? sanitize_text_field( wp_unslash( $_POST['business_type'] ) ) : '';
+        $tax_id = isset( $_POST['tax_id'] ) ? sanitize_text_field( wp_unslash( $_POST['tax_id'] ) ) : '';
         
         // Validate input lengths to prevent abuse
         if ( strlen( $company_name ) > 100 ) {
@@ -494,7 +494,7 @@ class Frontend {
         $message = '';
         
         // Handle form submission first
-        if (isset($_POST['b2b_registration_nonce']) && wp_verify_nonce($_POST['b2b_registration_nonce'], 'b2b_registration')) {
+        if (isset($_POST['b2b_registration_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['b2b_registration_nonce'])), 'b2b_registration')) {
             $message = $this->process_registration_form();
         }
 
@@ -514,11 +514,11 @@ class Frontend {
                 <div class="form-row">
                     <div class="form-group">
                         <label for="user_login"><?php esc_html_e('Username', 'b2b-commerce'); ?> *</label>
-                        <input type="text" name="user_login" id="user_login" value="<?php echo isset($_POST['user_login']) ? esc_attr( $_POST['user_login'] ) : ''; ?>" required>
+                        <input type="text" name="user_login" id="user_login" value="<?php echo isset($_POST['user_login']) ? esc_attr( sanitize_text_field( wp_unslash( $_POST['user_login'] ) ) ) : ''; ?>" required>
                     </div>
                     <div class="form-group">
                         <label for="user_email"><?php esc_html_e('Email', 'b2b-commerce'); ?> *</label>
-                        <input type="email" name="user_email" id="user_email" value="<?php echo isset($_POST['user_email']) ? esc_attr( $_POST['user_email'] ) : ''; ?>" required>
+                        <input type="email" name="user_email" id="user_email" value="<?php echo isset($_POST['user_email']) ? esc_attr( sanitize_email( wp_unslash( $_POST['user_email'] ) ) ) : ''; ?>" required>
                     </div>
                 </div>
                 
@@ -536,28 +536,28 @@ class Frontend {
                 <div class="form-row">
                     <div class="form-group">
                         <label for="first_name"><?php esc_html_e('First Name', 'b2b-commerce'); ?> *</label>
-                        <input type="text" name="first_name" id="first_name" value="<?php echo isset($_POST['first_name']) ? esc_attr( $_POST['first_name'] ) : ''; ?>" required>
+                        <input type="text" name="first_name" id="first_name" value="<?php echo isset($_POST['first_name']) ? esc_attr( sanitize_text_field( wp_unslash( $_POST['first_name'] ) ) ) : ''; ?>" required>
                     </div>
                     <div class="form-group">
                         <label for="last_name"><?php esc_html_e('Last Name', 'b2b-commerce'); ?> *</label>
-                        <input type="text" name="last_name" id="last_name" value="<?php echo isset($_POST['last_name']) ? esc_attr( $_POST['last_name'] ) : ''; ?>" required>
+                        <input type="text" name="last_name" id="last_name" value="<?php echo isset($_POST['last_name']) ? esc_attr( sanitize_text_field( wp_unslash( $_POST['last_name'] ) ) ) : ''; ?>" required>
                     </div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="company_name"><?php esc_html_e('Company Name', 'b2b-commerce'); ?> *</label>
-                        <input type="text" name="company_name" id="company_name" value="<?php echo isset($_POST['company_name']) ? esc_attr( $_POST['company_name'] ) : ''; ?>" required>
+                        <input type="text" name="company_name" id="company_name" value="<?php echo isset($_POST['company_name']) ? esc_attr( sanitize_text_field( wp_unslash( $_POST['company_name'] ) ) ) : ''; ?>" required>
                     </div>
                     <div class="form-group">
                         <label for="business_type"><?php esc_html_e('Business Type', 'b2b-commerce'); ?> *</label>
                         <select name="business_type" id="business_type" required>
                             <option value=""><?php esc_html_e('Select Business Type', 'b2b-commerce'); ?></option>
-                            <option value="wholesale" <?php echo (isset($_POST['business_type']) && $_POST['business_type'] === 'wholesale') ? 'selected' : ''; ?>><?php esc_html_e( 'Wholesale', 'b2b-commerce' ); ?></option>
-                            <option value="retail" <?php echo (isset($_POST['business_type']) && $_POST['business_type'] === 'retail') ? 'selected' : ''; ?>><?php esc_html_e( 'Retail', 'b2b-commerce' ); ?></option>
-                            <option value="distributor" <?php echo (isset($_POST['business_type']) && $_POST['business_type'] === 'distributor') ? 'selected' : ''; ?>><?php esc_html_e( 'Distributor', 'b2b-commerce' ); ?></option>
-                            <option value="manufacturer" <?php echo (isset($_POST['business_type']) && $_POST['business_type'] === 'manufacturer') ? 'selected' : ''; ?>><?php esc_html_e( 'Manufacturer', 'b2b-commerce' ); ?></option>
-                            <option value="other" <?php echo (isset($_POST['business_type']) && $_POST['business_type'] === 'other') ? 'selected' : ''; ?>><?php esc_html_e( 'Other', 'b2b-commerce' ); ?></option>
+                            <option value="wholesale" <?php echo (isset($_POST['business_type']) && sanitize_text_field(wp_unslash($_POST['business_type'])) === 'wholesale') ? 'selected' : ''; ?>><?php esc_html_e( 'Wholesale', 'b2b-commerce' ); ?></option>
+                            <option value="retail" <?php echo (isset($_POST['business_type']) && sanitize_text_field(wp_unslash($_POST['business_type'])) === 'retail') ? 'selected' : ''; ?>><?php esc_html_e( 'Retail', 'b2b-commerce' ); ?></option>
+                            <option value="distributor" <?php echo (isset($_POST['business_type']) && sanitize_text_field(wp_unslash($_POST['business_type'])) === 'distributor') ? 'selected' : ''; ?>><?php esc_html_e( 'Distributor', 'b2b-commerce' ); ?></option>
+                            <option value="manufacturer" <?php echo (isset($_POST['business_type']) && sanitize_text_field(wp_unslash($_POST['business_type'])) === 'manufacturer') ? 'selected' : ''; ?>><?php esc_html_e( 'Manufacturer', 'b2b-commerce' ); ?></option>
+                            <option value="other" <?php echo (isset($_POST['business_type']) && sanitize_text_field(wp_unslash($_POST['business_type'])) === 'other') ? 'selected' : ''; ?>><?php esc_html_e( 'Other', 'b2b-commerce' ); ?></option>
                         </select>
                     </div>
                 </div>
@@ -565,27 +565,27 @@ class Frontend {
                 <div class="form-row">
                     <div class="form-group">
                         <label for="tax_id"><?php esc_html_e('Tax ID / VAT Number', 'b2b-commerce'); ?></label>
-                        <input type="text" name="tax_id" id="tax_id" value="<?php echo isset($_POST['tax_id']) ? esc_attr( $_POST['tax_id'] ) : ''; ?>">
+                        <input type="text" name="tax_id" id="tax_id" value="<?php echo isset($_POST['tax_id']) ? esc_attr( sanitize_text_field( wp_unslash( $_POST['tax_id'] ) ) ) : ''; ?>">
                     </div>
                     <div class="form-group">
                         <label for="user_role"><?php esc_html_e('Account Type', 'b2b-commerce'); ?> *</label>
                         <select name="user_role" id="user_role" required>
                             <option value=""><?php esc_html_e('Select Account Type', 'b2b-commerce'); ?></option>
-                            <option value="wholesale_customer" <?php echo (isset($_POST['user_role']) && $_POST['user_role'] === 'wholesale_customer') ? 'selected' : ''; ?>><?php esc_html_e( 'Wholesale Customer', 'b2b-commerce' ); ?></option>
-                            <option value="distributor" <?php echo (isset($_POST['user_role']) && $_POST['user_role'] === 'distributor') ? 'selected' : ''; ?>><?php esc_html_e( 'Distributor', 'b2b-commerce' ); ?></option>
-                            <option value="retailer" <?php echo (isset($_POST['user_role']) && $_POST['user_role'] === 'retailer') ? 'selected' : ''; ?>><?php esc_html_e( 'Retailer', 'b2b-commerce' ); ?></option>
+                            <option value="wholesale_customer" <?php echo (isset($_POST['user_role']) && sanitize_text_field(wp_unslash($_POST['user_role'])) === 'wholesale_customer') ? 'selected' : ''; ?>><?php esc_html_e( 'Wholesale Customer', 'b2b-commerce' ); ?></option>
+                            <option value="distributor" <?php echo (isset($_POST['user_role']) && sanitize_text_field(wp_unslash($_POST['user_role'])) === 'distributor') ? 'selected' : ''; ?>><?php esc_html_e( 'Distributor', 'b2b-commerce' ); ?></option>
+                            <option value="retailer" <?php echo (isset($_POST['user_role']) && sanitize_text_field(wp_unslash($_POST['user_role'])) === 'retailer') ? 'selected' : ''; ?>><?php esc_html_e( 'Retailer', 'b2b-commerce' ); ?></option>
                         </select>
                     </div>
                 </div>
                 
                 <div class="form-group">
                     <label for="phone"><?php esc_html_e('Phone Number', 'b2b-commerce'); ?></label>
-                    <input type="tel" name="phone" id="phone" value="<?php echo isset($_POST['phone']) ? esc_attr( $_POST['phone'] ) : ''; ?>">
+                    <input type="tel" name="phone" id="phone" value="<?php echo isset($_POST['phone']) ? esc_attr( sanitize_text_field( wp_unslash( $_POST['phone'] ) ) ) : ''; ?>">
                 </div>
                 
                 <div class="form-group">
                     <label for="address"><?php esc_html_e('Business Address', 'b2b-commerce'); ?></label>
-                    <textarea name="address" id="address" rows="3"><?php echo isset($_POST['address']) ? esc_textarea( $_POST['address'] ) : ''; ?></textarea>
+                    <textarea name="address" id="address" rows="3"><?php echo isset($_POST['address']) ? esc_textarea( sanitize_textarea_field( wp_unslash( $_POST['address'] ) ) ) : ''; ?></textarea>
                 </div>
                 
                 <div class="form-group">
@@ -684,7 +684,7 @@ class Frontend {
         }
 
         // Verify nonce
-        if (!isset($_POST['b2b_registration_nonce']) || !wp_verify_nonce($_POST['b2b_registration_nonce'], 'b2b_registration')) {
+        if (!isset($_POST['b2b_registration_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['b2b_registration_nonce'])), 'b2b_registration')) {
             return '<div class="b2b-message notice-error"><p>' . esc_html__( '❌', 'b2b-commerce' ) . ' ' . esc_html__( 'Security check failed. Please try again.', 'b2b-commerce' ) . '</p></div>';
         }
         
@@ -702,19 +702,19 @@ class Frontend {
             return '<div class="b2b-message notice-error"><p>' . esc_html__( '❌', 'b2b-commerce' ) . ' ' . esc_html__( 'Too many registration attempts. Please try again later.', 'b2b-commerce' ) . '</p></div>';
         }
 
-        // Sanitize input data
-        $user_login = sanitize_user($_POST['user_login']);
-        $user_email = sanitize_email($_POST['user_email']);
-        $user_password = $_POST['user_password'];
-        $user_password_confirm = $_POST['user_password_confirm'];
-        $first_name = sanitize_text_field($_POST['first_name']);
-        $last_name = sanitize_text_field($_POST['last_name']);
-        $company_name = sanitize_text_field($_POST['company_name']);
-        $business_type = sanitize_text_field($_POST['business_type']);
-        $tax_id = sanitize_text_field($_POST['tax_id']);
-        $user_role = sanitize_text_field($_POST['user_role']);
-        $phone = sanitize_text_field($_POST['phone']);
-        $address = sanitize_textarea_field($_POST['address']);
+        // Sanitize input data with proper validation
+        $user_login = isset($_POST['user_login']) ? sanitize_user(wp_unslash($_POST['user_login'])) : '';
+        $user_email = isset($_POST['user_email']) ? sanitize_email(wp_unslash($_POST['user_email'])) : '';
+        $user_password = isset($_POST['user_password']) ? sanitize_text_field(wp_unslash($_POST['user_password'])) : '';
+        $user_password_confirm = isset($_POST['user_password_confirm']) ? sanitize_text_field(wp_unslash($_POST['user_password_confirm'])) : '';
+        $first_name = isset($_POST['first_name']) ? sanitize_text_field(wp_unslash($_POST['first_name'])) : '';
+        $last_name = isset($_POST['last_name']) ? sanitize_text_field(wp_unslash($_POST['last_name'])) : '';
+        $company_name = isset($_POST['company_name']) ? sanitize_text_field(wp_unslash($_POST['company_name'])) : '';
+        $business_type = isset($_POST['business_type']) ? sanitize_text_field(wp_unslash($_POST['business_type'])) : '';
+        $tax_id = isset($_POST['tax_id']) ? sanitize_text_field(wp_unslash($_POST['tax_id'])) : '';
+        $user_role = isset($_POST['user_role']) ? sanitize_text_field(wp_unslash($_POST['user_role'])) : '';
+        $phone = isset($_POST['phone']) ? sanitize_text_field(wp_unslash($_POST['phone'])) : '';
+        $address = isset($_POST['address']) ? sanitize_textarea_field(wp_unslash($_POST['address'])) : '';
 
         // Comprehensive validation
         $errors = [];
@@ -851,7 +851,7 @@ class Frontend {
         $ip_keys = array('HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR');
         foreach ($ip_keys as $key) {
             if (array_key_exists($key, $_SERVER) === true) {
-                foreach (explode(',', $_SERVER[$key]) as $ip) {
+                foreach (explode(',', sanitize_text_field(wp_unslash($_SERVER[$key]))) as $ip) {
                     $ip = trim($ip);
                     if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false) {
                         return $ip;
@@ -859,7 +859,7 @@ class Frontend {
                 }
             }
         }
-        return isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
+        return isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '0.0.0.0';
     }
 
     // Bulk order shortcode
@@ -1348,7 +1348,7 @@ class Frontend {
     // AJAX handler for bulk add to cart - with proper security
     public function handle_bulk_add_to_cart() {
         // Verify nonce
-        if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'b2b_ajax_nonce' ) ) {
+        if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'b2b_ajax_nonce' ) ) {
             wp_die( json_encode( array( 'success' => false, 'message' => esc_html__( 'Security check failed.', 'b2b-commerce' ) ) ) );
         }
         
@@ -1368,7 +1368,8 @@ class Frontend {
         }
         
         $products = array();
-        foreach ( $_POST['products'] as $product ) {
+        $sanitized_products = array_map( 'sanitize_text_field', wp_unslash( $_POST['products'] ) );
+        foreach ( $sanitized_products as $product ) {
             if ( isset( $product['sku'] ) && isset( $product['quantity'] ) ) {
                 // Additional validation for SKU and quantity
                 $sku = sanitize_text_field( $product['sku'] );
@@ -1405,6 +1406,7 @@ class Frontend {
         
         wp_die( json_encode( array( 
             'success' => true, 
+            // translators: %d is the number of products added to cart
             'message' => esc_html( sprintf( __( 'Successfully added %d products to cart.', 'b2b-commerce' ), $added_count ) ),
             'count' => $added_count
         ) ) );

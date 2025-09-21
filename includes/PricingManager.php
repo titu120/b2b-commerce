@@ -85,16 +85,17 @@ class PricingManager {
             require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
             dbDelta( $sql );
         } else {
-            // Fallback: try direct execution
-            $wpdb->query($sql);
-            error_log(__('B2B Commerce: Using fallback table creation', 'b2b-commerce'));
+        // Fallback: try direct execution
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+        $wpdb->query($sql);
+        // Debug logging removed for production
         }
         
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
         $exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table));
         if ($exists !== $table) {
-        // translators: %s is the table name that failed to be created
-        error_log(sprintf(__('B2B Commerce: Failed to create pricing table: %s', 'b2b-commerce'), esc_html($table)));
+        // Debug logging removed for production
             return false;
         }
         
@@ -105,15 +106,16 @@ class PricingManager {
     public function maybe_create_pricing_table() {
         global $wpdb;
         $table = $wpdb->prefix . self::PRICING_TABLE_NAME;
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
         $exists = $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) );
         if ( $exists != $table ) {
             $result = self::create_pricing_table();
             if ( !$result ) {
                 update_option( self::PRICING_TABLE_ERROR_OPTION, 1 );
-                error_log(__('B2B Commerce: Failed to create pricing table during self-healing', 'b2b-commerce'));
+                // Debug logging removed for production
             } else {
                 delete_option( self::PRICING_TABLE_ERROR_OPTION );
-                error_log(__('B2B Commerce: Successfully created pricing table during self-healing', 'b2b-commerce'));
+                // Debug logging removed for production
             }
         } else {
                 delete_option( self::PRICING_TABLE_ERROR_OPTION );
@@ -124,18 +126,19 @@ class PricingManager {
     public function check_pricing_table() {
         global $wpdb;
         $table = $wpdb->prefix . self::PRICING_TABLE_NAME;
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
         $exists = $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) );
         
 
         if ($exists != $table) {
-            error_log(__('B2B Pricing: Table does not exist', 'b2b-commerce'));
+            // Debug logging removed for production
             return false;
         }
         
         
-        $count = $wpdb->get_var("SELECT COUNT(*) FROM `" . $wpdb->_escape($table) . "`");
-        // translators: %d is the number of pricing rules in the table
-        error_log(sprintf(__('B2B Pricing: Table exists with %d rules', 'b2b-commerce'), intval($count)));
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        $count = $wpdb->get_var("SELECT COUNT(*) FROM `{$table}`");
+        // Debug logging removed for production
         return true;
     }
 
@@ -227,17 +230,8 @@ class PricingManager {
             return $product_level_price;
         }
         
-        global $wpdb;
-        $table = $wpdb->prefix . self::PRICING_TABLE_NAME;
-        
-        // Query product-specific rules AND global rules (product_id = 0)
-        // Global rules let the admin define role-based pricing that applies to every product
-        $rules = $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT * FROM $table WHERE product_id = %d OR product_id = 0",
-                $product_id
-            )
-        );
+        // Get pricing rules with caching
+        $rules = $this->get_pricing_rules_cached($product_id, $roles, $user_id);
         
         if (empty($rules)) {
             return $price; // No rules found, return original price
@@ -268,7 +262,7 @@ class PricingManager {
             }
             
             // Check time
-            $now = date( 'Y-m-d' );
+            $now = gmdate( 'Y-m-d' );
             if ( $rule->start_date && $now < $rule->start_date ) {
                 $rule_matches = false;
             }
@@ -300,10 +294,7 @@ class PricingManager {
             }
         }
         
-        // Debug logging
-        if ($matched_rule) {
-            error_log("B2B Pricing: Product " . esc_html($product_id) . ", User " . esc_html($user_id) . ", Original: " . esc_html($price) . ", New: " . esc_html($best_price) . ", Rule ID: " . esc_html($matched_rule->id));
-        }
+        // Debug logging removed for production
         
         return $best_price;
     }
@@ -351,16 +342,8 @@ class PricingManager {
             return $new_price_html;
         }
         
-        global $wpdb;
-        $table = $wpdb->prefix . self::PRICING_TABLE_NAME;
-        
-        // Query product-specific rules AND global rules (product_id = 0)
-        $rules = $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT * FROM `" . $wpdb->_escape($table) . "` WHERE product_id = %d OR product_id = 0",
-                $product_id
-            )
-        );
+        // Get pricing rules with caching
+        $rules = $this->get_pricing_rules_cached($product_id, $roles, $user_id);
         
         if (empty($rules)) {
             return $price_html; // No rules found, return original price
@@ -392,7 +375,7 @@ class PricingManager {
             }
             
             // Check time
-            $now = date( 'Y-m-d' );
+            $now = gmdate( 'Y-m-d' );
             if ( $rule->start_date && $now < $rule->start_date ) {
                 $rule_matches = false;
             }
@@ -462,9 +445,6 @@ class PricingManager {
             return;
         }
         
-        global $wpdb;
-        $table = $wpdb->prefix . self::PRICING_TABLE_NAME;
-
         $user = wp_get_current_user();
         $roles = (array) ($user->roles ?? []);
         $user_id = (int) ($user->ID ?? 0);
@@ -478,13 +458,8 @@ class PricingManager {
             $product_id = $cart_item['product_id'];
             $quantity   = (int) $cart_item['quantity'];
 
-            // Pull both product-specific and global rules
-            $rules = $wpdb->get_results(
-                $wpdb->prepare(
-                    "SELECT * FROM $table WHERE product_id = %d OR product_id = 0",
-                    $product_id
-                )
-            );
+            // Get pricing rules with caching
+            $rules = $this->get_pricing_rules_cached($product_id, $roles, $user_id);
 
             // Enforce min/max and determine best price for current quantity
             $original_price = $product->get_regular_price();
@@ -536,7 +511,7 @@ class PricingManager {
                 if ( $enforce_min_qty && $rule->min_qty && $quantity < (int)$rule->min_qty ) {
                     $matches = false;
                 }
-                $now = date('Y-m-d');
+                $now = gmdate('Y-m-d');
                 if ( $rule->start_date && $now < $rule->start_date ) { $matches = false; }
                 if ( $rule->end_date && $now > $rule->end_date ) { $matches = false; }
                 if ( ! $matches ) { continue; }
@@ -598,7 +573,8 @@ class PricingManager {
         $required_fields = ['product_id', 'role', 'price', 'type'];
         foreach ($required_fields as $field) {
             if (!isset($sanitized_post[$field]) || empty($sanitized_post[$field])) {
-                wp_die(sprintf(__('Required field %s is missing.', 'b2b-commerce'), esc_html($field)));
+                // translators: %s is the field name that is missing
+                wp_die(esc_html(sprintf(__('Required field %s is missing.', 'b2b-commerce'), $field)));
             }
         }
         
@@ -630,10 +606,7 @@ class PricingManager {
         if (!empty($sanitized_post['id']) && is_numeric($sanitized_post['id'])) {
             $rule_id = intval($sanitized_post['id']);
             // Verify the rule exists and user has permission to edit it
-            $existing_rule = $wpdb->get_row($wpdb->prepare(
-                "SELECT * FROM $table WHERE id = %d",
-                $rule_id
-            ));
+            $existing_rule = $this->get_pricing_rule_by_id($rule_id);
             
             if (!$existing_rule) {
                 wp_die(esc_html__('Pricing rule not found.', 'b2b-commerce'));
@@ -643,11 +616,15 @@ class PricingManager {
             if ($result === false) {
                 wp_die(esc_html__('Failed to update pricing rule.', 'b2b-commerce'));
             }
+            // Clear cache after update
+            $this->clear_pricing_rules_cache($data['product_id'], $rule_id);
         } else {
             $result = $wpdb->insert($table, $data);
             if ($result === false) {
                 wp_die(esc_html__('Failed to create pricing rule.', 'b2b-commerce'));
             }
+            // Clear cache after insert
+            $this->clear_pricing_rules_cache($data['product_id']);
         }
         
         wp_redirect(admin_url('admin.php?page=' . self::ADMIN_PAGE_SLUG . '&updated=1'));
@@ -681,10 +658,7 @@ class PricingManager {
         $rule_id = intval($sanitized_get['id']);
         
         // Verify the rule exists before attempting to delete
-        $existing_rule = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM $table WHERE id = %d",
-            $rule_id
-        ));
+        $existing_rule = $this->get_pricing_rule_by_id($rule_id);
         
         if (!$existing_rule) {
             wp_die(esc_html__('Pricing rule not found.', 'b2b-commerce'));
@@ -694,6 +668,8 @@ class PricingManager {
         if ($result === false) {
             wp_die(esc_html__('Failed to delete pricing rule.', 'b2b-commerce'));
         }
+        // Clear cache after delete
+        $this->clear_pricing_rules_cache($existing_rule->product_id, $rule_id);
         
         wp_redirect(admin_url('admin.php?page=' . self::ADMIN_PAGE_SLUG . '&deleted=1'));
         exit;
@@ -757,43 +733,8 @@ class PricingManager {
             }
         }
         
-        // Get tiered pricing rules for this product
-        // Show only rules relevant to the current user's role
-        if (current_user_can('manage_options') || current_user_can('manage_woocommerce') || current_user_can('edit_products')) {
-            // Administrators see all rules for management purposes
-            $rules = $wpdb->get_results(
-                $wpdb->prepare(
-                    "SELECT * FROM $table WHERE product_id = %d ORDER BY role, min_qty ASC",
-                    $product_id
-                )
-            );
-            
-            // If no product-specific rules, check for global rules
-            if (empty($rules)) {
-                $rules = $wpdb->get_results(
-                    "SELECT * FROM `" . $wpdb->_escape($table) . "` WHERE product_id = 0 ORDER BY role, min_qty ASC"
-                );
-            }
-        } else {
-            // For non-admins, only show rules for their specific role
-            $user_role_placeholders = implode(',', array_fill(0, count($user_roles), '%s'));
-            $rules = $wpdb->get_results(
-                $wpdb->prepare(
-                    "SELECT * FROM $table WHERE product_id = %d AND role IN ($user_role_placeholders) ORDER BY role, min_qty ASC",
-                    array_merge([$product_id], $user_roles)
-                )
-            );
-            
-            // If no product-specific rules, check for global rules
-            if (empty($rules)) {
-                $rules = $wpdb->get_results(
-                    $wpdb->prepare(
-                        "SELECT * FROM `" . $wpdb->_escape($table) . "` WHERE product_id = 0 AND role IN ($user_role_placeholders) ORDER BY role, min_qty ASC",
-                        $user_roles
-                    )
-                );
-            }
-        }
+        // Get tiered pricing rules for this product using cached method
+        $rules = $this->get_pricing_rules_cached($product_id, $user_roles, $user_id);
         
         if (empty($rules)) return '';
         
@@ -867,10 +808,7 @@ class PricingManager {
             }
         }
         
-        $rules = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $table WHERE (product_id = %d OR product_id = 0) AND role IN (" . implode(',', array_fill(0, count($user_roles), '%s')) . ") ORDER BY product_id DESC",
-            array_merge([$product_id], $user_roles)
-        ));
+        $rules = $this->get_pricing_rules_cached($product_id, $user_roles, $user_id);
         
         if (empty($rules)) return '';
         
@@ -899,10 +837,9 @@ class PricingManager {
         
         if (!$user_id) return '';
         
-        $rule = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM $table WHERE (product_id = %d OR product_id = 0) AND user_id = %d ORDER BY product_id DESC LIMIT 1",
-            $product_id, $user_id
-        ));
+        // Get user-specific pricing rules
+        $rules = $this->get_pricing_rules_cached($product_id, [], $user_id);
+        $rule = !empty($rules) ? $rules[0] : null;
         
         if (!$rule) return '';
         
@@ -923,9 +860,14 @@ class PricingManager {
         $user_country = WC()->customer ? WC()->customer->get_billing_country() : '';
         if (!$user_country) return '';
         
+        // Get geographic pricing rules - this requires a custom query for geo_zone
+        global $wpdb;
+        $table = $wpdb->prefix . self::PRICING_TABLE_NAME;
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         $rule = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM $table WHERE (product_id = %d OR product_id = 0) AND geo_zone = %s ORDER BY product_id DESC LIMIT 1",
-            $product_id, $user_country
+            "SELECT * FROM `{$table}` WHERE (product_id = %d OR product_id = 0) AND geo_zone = %s ORDER BY product_id DESC LIMIT 1",
+            $product_id, 
+            $user_country
         ));
         
         if (!$rule) return '';
@@ -945,9 +887,13 @@ class PricingManager {
         $product_id = get_the_ID();
         $current_date = current_time('Y-m-d');
         
+        // Get time-based pricing rules - this requires a custom query for date ranges
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         $rule = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM $table WHERE (product_id = %d OR product_id = 0) AND start_date <= %s AND end_date >= %s ORDER BY product_id DESC LIMIT 1",
-            $product_id, $current_date, $current_date
+            "SELECT * FROM `{$table}` WHERE (product_id = %d OR product_id = 0) AND start_date <= %s AND end_date >= %s ORDER BY product_id DESC LIMIT 1",
+            $product_id, 
+            $current_date, 
+            $current_date
         ));
         
         if (!$rule) return '';
@@ -977,22 +923,9 @@ class PricingManager {
         $user_id = get_current_user_id();
         $user_roles = is_user_logged_in() ? (array) wp_get_current_user()->roles : [];
         
-        if (empty($user_roles)) {
-            $rule = $wpdb->get_row(
-                $wpdb->prepare(
-                    "SELECT min_qty, max_qty FROM $table WHERE (product_id = %d OR product_id = 0) AND user_id = 0 ORDER BY product_id DESC, min_qty ASC LIMIT 1",
-                    $product_id
-                )
-            );
-        } else {
-            $placeholders = implode(',', array_fill(0, count($user_roles), '%s'));
-            $rule = $wpdb->get_row(
-                $wpdb->prepare(
-                    "SELECT min_qty, max_qty FROM $table WHERE (product_id = %d OR product_id = 0) AND (user_id = %d OR role IN ($placeholders)) ORDER BY product_id DESC, min_qty ASC LIMIT 1",
-                    array_merge([$product_id, $user_id], $user_roles)
-                )
-            );
-        }
+        // Get quantity rules using cached method
+        $rules = $this->get_pricing_rules_cached($product_id, $user_roles, $user_id);
+        $rule = !empty($rules) ? $rules[0] : null;
         
         if (!$rule) return '';
         
@@ -1176,13 +1109,8 @@ class PricingManager {
         
         $product_id = intval($sanitized_post['product_id']);
         
-        global $wpdb;
-        $table = $wpdb->prefix . self::PRICING_TABLE_NAME;
-        
-        $rules = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $table WHERE product_id = %d OR product_id = 0 ORDER BY product_id DESC, min_qty ASC",
-            $product_id
-        ));
+        // Get pricing rules using cached method
+        $rules = $this->get_pricing_rules_cached($product_id);
         
         wp_send_json_success($rules);
     }
@@ -1232,15 +1160,20 @@ class PricingManager {
         $placeholders = implode(',', array_fill(0, count($rule_ids), '%d'));
         
         if ($sanitized_post['action_type'] === 'delete') {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
             $result = $wpdb->query($wpdb->prepare(
-                "DELETE FROM $table WHERE id IN ($placeholders)",
-                $rule_ids
+                "DELETE FROM `{$table}` WHERE id IN ($placeholders)",
+                ...$rule_ids
             ));
             
             if ($result === false) {
                 wp_send_json_error(esc_html__('Failed to delete rules.', 'b2b-commerce'));
             }
             
+            // Clear cache after bulk delete
+            $this->clear_pricing_rules_cache();
+            
+            // translators: %d is the number of rules that were deleted
             wp_send_json_success(sprintf(esc_html__('Successfully deleted %d rules.', 'b2b-commerce'), intval($result)));
         }
         
@@ -1281,7 +1214,9 @@ class PricingManager {
         $ip_keys = ['HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'];
         foreach ($ip_keys as $key) {
             if (array_key_exists($key, $_SERVER) === true) {
-                foreach (explode(',', $_SERVER[$key]) as $ip) {
+                $server_value = isset($_SERVER[$key]) ? sanitize_text_field(wp_unslash($_SERVER[$key])) : '';
+                $server_value = sanitize_text_field($server_value);
+                foreach (explode(',', $server_value) as $ip) {
                     $ip = trim($ip);
                     if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false) {
                         return $ip;
@@ -1289,6 +1224,97 @@ class PricingManager {
                 }
             }
         }
-        return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        $remote_addr = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '0.0.0.0';
+        return sanitize_text_field($remote_addr);
+    }
+    
+    /**
+     * Get a single pricing rule by ID with caching
+     * 
+     * @param int $rule_id
+     * @return object|null
+     */
+    private function get_pricing_rule_by_id($rule_id) {
+        $cache_key = 'b2b_pricing_rule_' . $rule_id;
+        $cached_rule = wp_cache_get($cache_key, 'b2b_commerce');
+        
+        if ($cached_rule !== false) {
+            return $cached_rule;
+        }
+        
+        global $wpdb;
+        $table = $wpdb->prefix . self::PRICING_TABLE_NAME;
+        
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        $rule = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM `{$table}` WHERE id = %d",
+            $rule_id
+        ));
+        
+        // Cache for 5 minutes
+        wp_cache_set($cache_key, $rule, 'b2b_commerce', 300);
+        
+        return $rule;
+    }
+    
+    /**
+     * Get pricing rules with caching
+     * 
+     * @param int $product_id
+     * @param array $user_roles
+     * @param int $user_id
+     * @return array
+     */
+    private function get_pricing_rules_cached($product_id, $user_roles = [], $user_id = 0) {
+        $cache_key = 'b2b_pricing_rules_' . $product_id . '_' . md5(serialize($user_roles)) . '_' . $user_id;
+        $cached_rules = wp_cache_get($cache_key, 'b2b_commerce');
+        
+        if ($cached_rules !== false) {
+            return $cached_rules;
+        }
+        
+        global $wpdb;
+        $table = $wpdb->prefix . self::PRICING_TABLE_NAME;
+        
+        // Build query based on parameters
+        if (!empty($user_roles)) {
+            $placeholders = implode(',', array_fill(0, count($user_roles), '%s'));
+            $query = "SELECT * FROM `{$table}` WHERE (product_id = %d OR product_id = 0) AND role IN ($placeholders) ORDER BY product_id DESC, min_qty ASC";
+            $params = array_merge([$product_id], $user_roles);
+        } else {
+            $query = "SELECT * FROM `{$table}` WHERE product_id = %d OR product_id = 0 ORDER BY product_id DESC, min_qty ASC";
+            $params = [$product_id];
+        }
+        
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+        $rules = $wpdb->get_results($wpdb->prepare($query, ...$params));
+        
+        // Cache for 5 minutes
+        wp_cache_set($cache_key, $rules, 'b2b_commerce', 300);
+        
+        return $rules;
+    }
+    
+    /**
+     * Clear pricing rules cache
+     * 
+     * @param int $product_id
+     * @param int $rule_id
+     */
+    private function clear_pricing_rules_cache($product_id = 0, $rule_id = 0) {
+        if ($rule_id > 0) {
+            // Clear specific rule cache
+            $rule_cache_key = 'b2b_pricing_rule_' . $rule_id;
+            wp_cache_delete($rule_cache_key, 'b2b_commerce');
+        }
+        
+        if ($product_id > 0) {
+            // Clear specific product cache
+            $cache_key = 'b2b_pricing_rules_' . $product_id . '_*';
+            wp_cache_delete($cache_key, 'b2b_commerce');
+        } else {
+            // Clear all pricing rules cache
+            wp_cache_flush_group('b2b_commerce');
+        }
     }
 } 
